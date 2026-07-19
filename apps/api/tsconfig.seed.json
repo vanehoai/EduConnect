@@ -1,0 +1,9 @@
+{
+  "extends": "@school/tsconfig/nestjs.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["prisma/seed.ts"]
+}

@@ -1,0 +1,1 @@
+-- DropIndex`nDROP INDEX "Schedule_valid_dates_idx";

@@ -1,0 +1,2 @@
+studentCode,fullName,email,phone,dateOfBirth,gender,address,departmentCode,admissionAcademicYearCode,cohortClass,cohort,enrollmentDate,academicStatus,initialPassword
+SV2026001,Nguyễn Văn A,student.new@school.local,0901234567,2007-01-15,MALE,TP.HCM,CNTT,2026-2027,CNTT2026A,K2026,2026-09-01,STUDYING,Password@123
