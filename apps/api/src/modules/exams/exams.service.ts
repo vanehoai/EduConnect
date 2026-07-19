@@ -31,7 +31,7 @@ export class ExamsService {
       include: {
         questions: true,
         assignments: true,
-      }
+      },
     });
 
     if (!exam || exam.deletedAt) {
@@ -62,7 +62,7 @@ export class ExamsService {
 
     return this.prisma.exam.update({
       where: { id },
-      data: { 
+      data: {
         status: ExamStatus.CANCELLED,
         deletedAt: new Date(),
       },
@@ -98,7 +98,7 @@ export class ExamsService {
     await this.checkOwnership(id, userId);
 
     return this.prisma.$transaction(async (tx) => {
-      // We can append or replace. The requirement says "phân công kỳ thi" (POST /exams/:id/assignments). 
+      // We can append or replace. The requirement says "phân công kỳ thi" (POST /exams/:id/assignments).
       // Usually POST adds new assignments. We'll use upsert or createMany (skip duplicates).
       for (const studentId of assignExamDto.studentIds) {
         await tx.examAssignment.upsert({
@@ -106,7 +106,7 @@ export class ExamsService {
             examId_studentId: {
               examId: id,
               studentId: studentId,
-            }
+            },
           },
           update: {},
           create: {

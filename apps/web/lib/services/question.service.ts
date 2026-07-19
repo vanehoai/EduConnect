@@ -1,5 +1,4 @@
 import { apiRequest, apiRequestEnvelope, apiDownload } from '../api-client';
-import type { ApiResponse, PaginationMeta } from '@school/shared-types';
 
 export type QuestionType = 'MULTIPLE_CHOICE' | 'MULTIPLE_SELECT' | 'TRUE_FALSE' | 'ESSAY';
 export type QuestionDifficulty = 'EASY' | 'MEDIUM' | 'HARD';
@@ -17,10 +16,11 @@ export interface Question {
   content: string;
   type: QuestionType;
   difficulty: QuestionDifficulty;
-  options: QuestionOption[];
+  options: { id: string; content: string; isCorrect: boolean }[];
   explanation?: string;
   points: number;
   tags: string[];
+  isArchived: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,7 +36,7 @@ export interface CreateQuestionDto {
   tags?: string[];
 }
 
-export interface UpdateQuestionDto extends Partial<CreateQuestionDto> {}
+export type UpdateQuestionDto = Partial<CreateQuestionDto>;
 
 export interface QuestionFilters {
   courseId?: string;
@@ -74,8 +74,7 @@ export const questionService = {
       body: JSON.stringify(data),
     }),
 
-  deleteQuestion: (id: string) =>
-    apiRequest<void>(`/questions/${id}`, { method: 'DELETE' }),
+  deleteQuestion: (id: string) => apiRequest<void>(`/questions/${id}`, { method: 'DELETE' }),
 
   importQuestions: (courseId: string, file: File) => {
     const formData = new FormData();

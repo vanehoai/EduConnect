@@ -1,6 +1,13 @@
-import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { QuestionType, ShowResultMode, ExamAttemptStatus, ExamStatus, EnrollmentStatus, Prisma } from '@prisma/client';
+import {
+  QuestionType,
+  ShowResultMode,
+  ExamAttemptStatus,
+  ExamStatus,
+  EnrollmentStatus,
+  Prisma,
+} from '@prisma/client';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import type { PermissionCode } from '@school/shared-types';
 
@@ -64,7 +71,7 @@ export class ExamAttemptsService {
     }
 
     if (now > exam.endsAt && !exam.allowLateStart) {
-       throw new ForbiddenException('Exam has already ended');
+      throw new ForbiddenException('Exam has already ended');
     }
 
     const enrollment = exam.classSection.enrollments[0];
@@ -72,41 +79,45 @@ export class ExamAttemptsService {
       throw new ForbiddenException('Student is not enrolled in this class section');
     }
 
-    const attemptsCount = await this.prisma.examAttempt.count({
-      where: { examId, studentId },
-    });
-
-    if (attemptsCount >= exam.maxAttempts) {
-      throw new ForbiddenException('Max attempts reached');
-    }
-
-    const ongoingAttempt = await this.prisma.examAttempt.findFirst({
-      where: { examId, studentId, status: ExamAttemptStatus.IN_PROGRESS },
-    });
-
-    if (ongoingAttempt) {
-       if (ongoingAttempt.expiresAt > now) {
-         return ongoingAttempt;
-       } else {
-         await this.prisma.examAttempt.update({
-           where: { id: ongoingAttempt.id },
-           data: { status: ExamAttemptStatus.EXPIRED },
-         });
-       }
-    }
-
-    let examQuestions = [...exam.questions];
-    if (exam.shuffleQuestions) {
-      examQuestions = this.shuffleArray(examQuestions);
-    }
-
-    const attemptNumber = attemptsCount + 1;
-    const durationMs = exam.durationMinutes * 60 * 1000;
-    const expiresAt = new Date(now.getTime() + durationMs);
-
-    const finalExpiresAt = (expiresAt > exam.endsAt) ? exam.endsAt : expiresAt;
-
     return this.prisma.$transaction(async (tx) => {
+      // Lock student record to serialize attempt creations for this student
+      // This prevents race conditions where multiple requests try to start an attempt concurrently
+      await tx.$queryRaw`SELECT id FROM "Student" WHERE id = ${studentId} FOR UPDATE`;
+
+      const attemptsCount = await tx.examAttempt.count({
+        where: { examId, studentId },
+      });
+
+      if (attemptsCount >= exam.maxAttempts) {
+        throw new ForbiddenException('Max attempts reached');
+      }
+
+      const ongoingAttempt = await tx.examAttempt.findFirst({
+        where: { examId, studentId, status: ExamAttemptStatus.IN_PROGRESS },
+      });
+
+      if (ongoingAttempt) {
+        if (ongoingAttempt.expiresAt > now) {
+          return ongoingAttempt;
+        } else {
+          await tx.examAttempt.update({
+            where: { id: ongoingAttempt.id },
+            data: { status: ExamAttemptStatus.EXPIRED },
+          });
+        }
+      }
+
+      let examQuestions = [...exam.questions];
+      if (exam.shuffleQuestions) {
+        examQuestions = this.shuffleArray(examQuestions);
+      }
+
+      const attemptNumber = attemptsCount + 1;
+      const durationMs = exam.durationMinutes * 60 * 1000;
+      const expiresAt = new Date(now.getTime() + durationMs);
+
+      const finalExpiresAt = expiresAt > exam.endsAt ? exam.endsAt : expiresAt;
+
       const attempt = await tx.examAttempt.create({
         data: {
           examId,
@@ -133,9 +144,7 @@ export class ExamAttemptsService {
           displayOrder: o.displayOrder,
         }));
 
-        const correctAnswerSnapshot = options
-          .filter((o) => o.isCorrect)
-          .map((o) => ({ id: o.id }));
+        const correctAnswerSnapshot = options.filter((o) => o.isCorrect).map((o) => ({ id: o.id }));
 
         return {
           examAttemptId: attempt.id,
@@ -208,17 +217,19 @@ export class ExamAttemptsService {
     }
 
     const mappedQuestions = attempt.attemptQuestions.map((aq) => {
-      const mappedAnswer = aq.studentAnswer ? {
-        id: aq.studentAnswer.id,
-        examAttemptId: aq.studentAnswer.examAttemptId,
-        examAttemptQuestionId: aq.studentAnswer.examAttemptQuestionId,
-        selectedOptionIds: aq.studentAnswer.selectedOptionIds,
-        isCorrect: hideResults ? null : aq.studentAnswer.isCorrect,
-        earnedPoints: hideResults ? null : aq.studentAnswer.earnedPoints,
-        answeredAt: aq.studentAnswer.answeredAt,
-        createdAt: aq.studentAnswer.createdAt,
-        updatedAt: aq.studentAnswer.updatedAt,
-      } : null;
+      const mappedAnswer = aq.studentAnswer
+        ? {
+            id: aq.studentAnswer.id,
+            examAttemptId: aq.studentAnswer.examAttemptId,
+            examAttemptQuestionId: aq.studentAnswer.examAttemptQuestionId,
+            selectedOptionIds: aq.studentAnswer.selectedOptionIds,
+            isCorrect: hideResults ? null : aq.studentAnswer.isCorrect,
+            earnedPoints: hideResults ? null : aq.studentAnswer.earnedPoints,
+            answeredAt: aq.studentAnswer.answeredAt,
+            createdAt: aq.studentAnswer.createdAt,
+            updatedAt: aq.studentAnswer.updatedAt,
+          }
+        : null;
 
       return {
         id: aq.id,
@@ -243,7 +254,12 @@ export class ExamAttemptsService {
     };
   }
 
-  async autoSaveAnswer(attemptId: string, questionId: string, selectedOptionIds: string[], userId: string) {
+  async autoSaveAnswer(
+    attemptId: string,
+    questionId: string,
+    selectedOptionIds: string[],
+    userId: string,
+  ) {
     const attempt = await this.prisma.examAttempt.findUnique({
       where: { id: attemptId },
       include: {
@@ -254,14 +270,15 @@ export class ExamAttemptsService {
 
     if (!attempt) throw new NotFoundException('Attempt not found');
     if (attempt.student.userId !== userId) throw new ForbiddenException('Not your attempt');
-    if (attempt.status !== ExamAttemptStatus.IN_PROGRESS) throw new ForbiddenException('Attempt is not in progress');
+    if (attempt.status !== ExamAttemptStatus.IN_PROGRESS)
+      throw new ForbiddenException('Attempt is not in progress');
 
     if (new Date() > attempt.expiresAt) {
       throw new ForbiddenException('Attempt has expired');
     }
 
     const attemptQuestion = await this.prisma.examAttemptQuestion.findFirst({
-      where: { examAttemptId: attemptId, questionId: questionId }
+      where: { examAttemptId: attemptId, questionId: questionId },
     });
     if (!attemptQuestion) throw new NotFoundException('Question not found in this attempt');
 
@@ -278,7 +295,7 @@ export class ExamAttemptsService {
         examAttemptQuestionId: attemptQuestion.id,
         selectedOptionIds: selectedOptionIds as unknown as Prisma.InputJsonValue,
         answeredAt: new Date(),
-      }
+      },
     });
 
     return {
@@ -299,14 +316,15 @@ export class ExamAttemptsService {
         attemptQuestions: {
           include: {
             studentAnswer: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     if (!attempt) throw new NotFoundException('Attempt not found');
     if (attempt.student.userId !== userId) throw new ForbiddenException('Not your attempt');
-    if (attempt.status !== ExamAttemptStatus.IN_PROGRESS) throw new ForbiddenException('Already submitted or not in progress');
+    if (attempt.status !== ExamAttemptStatus.IN_PROGRESS)
+      throw new ForbiddenException('Already submitted or not in progress');
 
     let totalScore = 0;
     let maxTotalScore = 0;
@@ -323,25 +341,28 @@ export class ExamAttemptsService {
       let isCorrect = false;
       let earnedPoints = 0;
 
-      if (aq.typeSnapshot === QuestionType.SINGLE_CHOICE || aq.typeSnapshot === QuestionType.TRUE_FALSE) {
-         if (selectedIds.length === 1 && selectedIds[0] && correctIds.includes(selectedIds[0])) {
-           isCorrect = true;
-           earnedPoints = Number(aq.points);
-         }
+      if (
+        aq.typeSnapshot === QuestionType.SINGLE_CHOICE ||
+        aq.typeSnapshot === QuestionType.TRUE_FALSE
+      ) {
+        if (selectedIds.length === 1 && selectedIds[0] && correctIds.includes(selectedIds[0])) {
+          isCorrect = true;
+          earnedPoints = Number(aq.points);
+        }
       } else if (aq.typeSnapshot === QuestionType.MULTIPLE_CHOICE) {
-         if (selectedIds.length === correctIds.length) {
-            const isAllCorrect = selectedIds.every((id) => correctIds.includes(id));
-            if (isAllCorrect) {
-               isCorrect = true;
-               earnedPoints = Number(aq.points);
-            }
-         }
+        if (selectedIds.length === correctIds.length) {
+          const isAllCorrect = selectedIds.every((id) => correctIds.includes(id));
+          if (isAllCorrect) {
+            isCorrect = true;
+            earnedPoints = Number(aq.points);
+          }
+        }
       }
 
       totalScore += earnedPoints;
 
       if (!answer.id) {
-         // Should not happen as upsert creates it
+        // Should not happen as upsert creates it
       } else {
         await this.prisma.studentAnswer.update({
           where: { id: answer.id },

@@ -139,6 +139,9 @@ enum InvoiceStatus {
   OVERDUE
   CANCELLED
   REFUNDED
+  VOID
+  DRAFT
+  ISSUED
 }
 
 enum PaymentProvider {
@@ -155,6 +158,7 @@ enum PaymentStatus {
   FAILED
   CANCELLED
   REFUNDED
+  VERIFIED
 }
 
 enum WebhookStatus {
@@ -176,33 +180,87 @@ enum NotificationType {
   SYSTEM
 }
 
+enum FeeCategory {
+  TUITION
+  REGISTRATION
+  FACILITY
+  LAB
+  LIBRARY
+  EXAM
+  OTHER
+}
+
+enum FeeCalculationMethod {
+  FIXED
+  PER_CREDIT
+  PER_COURSE
+  PER_SEMESTER
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum ScholarshipStatus {
+  APPROVED
+  REJECTED
+  PENDING
+  REVOKED
+}
+
+enum FinancialAdjustmentType {
+  CREDIT
+  DEBIT
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  INTERNAL_TRANSFER
+  OTHER
+}
+
+enum ReceiptStatus {
+  ISSUED
+  CANCELLED
+}
+
 model User {
-  id                  String         @id @default(cuid())
-  email               String         @unique @db.VarChar(255)
-  passwordHash        String         @db.VarChar(255)
-  fullName            String         @db.VarChar(150)
-  phone               String?        @db.VarChar(20)
-  avatarUrl           String?        @db.VarChar(500)
-  status              UserStatus     @default(ACTIVE)
-  failedLoginAttempts Int            @default(0)
-  lockedUntil         DateTime?
-  lastLoginAt         DateTime?
-  passwordChangedAt   DateTime?
-  roles               UserRole[]
-  refreshTokens       RefreshToken[]
-  loginHistories      LoginHistory[]
-  auditLogs           AuditLog[]
-  lecturer            Lecturer?
-  student             Student?
-  createdQuestions    Question[]     @relation("QuestionCreator")
-  createdExams              Exam[]             @relation("ExamCreator")
-  gradedStudentGrades       StudentGrade[]     @relation("GradeGrader")
-  publishedEnrollmentGrades Enrollment[]       @relation("GradePublisher")
-  markedAttendanceRecords   AttendanceRecord[] @relation("AttendanceMarker")
+  id                        String                @id @default(cuid())
+  email                     String                @unique @db.VarChar(255)
+  passwordHash              String                @db.VarChar(255)
+  fullName                  String                @db.VarChar(150)
+  phone                     String?               @db.VarChar(20)
+  avatarUrl                 String?               @db.VarChar(500)
+  status                    UserStatus            @default(ACTIVE)
+  failedLoginAttempts       Int                   @default(0)
+  lockedUntil               DateTime?
+  lastLoginAt               DateTime?
+  passwordChangedAt         DateTime?
+  roles                     UserRole[]
+  refreshTokens             RefreshToken[]
+  loginHistories            LoginHistory[]
+  auditLogs                 AuditLog[]
+  lecturer                  Lecturer?
+  student                   Student?
+  createdQuestions          Question[]            @relation("QuestionCreator")
+  createdExams              Exam[]                @relation("ExamCreator")
+  gradedStudentGrades       StudentGrade[]        @relation("GradeGrader")
+  publishedEnrollmentGrades Enrollment[]          @relation("GradePublisher")
+  markedAttendanceRecords   AttendanceRecord[]    @relation("AttendanceMarker")
   notifications             Notification[]
-  createdAt                 DateTime           @default(now())
-  updatedAt           DateTime       @updatedAt
-  deletedAt           DateTime?
+  issuedInvoices            Invoice[]             @relation("InvoiceIssuer")
+  cancelledInvoices         Invoice[]             @relation("InvoiceCanceller")
+  receivedPayments          PaymentTransaction[]  @relation("PaymentReceiver")
+  verifiedPayments          PaymentTransaction[]  @relation("PaymentVerifier")
+  cancelledPayments         PaymentTransaction[]  @relation("PaymentCanceller")
+  issuedReceipts            Receipt[]             @relation("ReceiptIssuer")
+  approvedScholarships      StudentScholarship[]  @relation("ScholarshipApprover")
+  createdAdjustments        FinancialAdjustment[] @relation("AdjustmentCreator")
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+  deletedAt                 DateTime?
 
   @@index([fullName])
   @@index([status])
@@ -318,19 +376,20 @@ model AuditLog {
 }
 
 model Department {
-  id             String       @id @default(cuid())
-  code           String       @unique @db.VarChar(20)
-  name           String       @unique @db.VarChar(150)
-  description    String?      @db.Text
-  headLecturerId String?      @unique
-  status         RecordStatus @default(ACTIVE)
-  headLecturer   Lecturer?    @relation("DepartmentHead", fields: [headLecturerId], references: [id], onDelete: SetNull)
-  lecturers      Lecturer[]   @relation("DepartmentLecturers")
+  id             String        @id @default(cuid())
+  code           String        @unique @db.VarChar(20)
+  name           String        @unique @db.VarChar(150)
+  description    String?       @db.Text
+  headLecturerId String?       @unique
+  status         RecordStatus  @default(ACTIVE)
+  headLecturer   Lecturer?     @relation("DepartmentHead", fields: [headLecturerId], references: [id], onDelete: SetNull)
+  lecturers      Lecturer[]    @relation("DepartmentLecturers")
   students       Student[]
   courses        Course[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
   deletedAt      DateTime?
+  tuitionRates   TuitionRate[]
 
   @@index([name])
   @@index([status])
@@ -365,24 +424,24 @@ model Lecturer {
 }
 
 model Student {
-  id                      String               @id @default(cuid())
-  studentCode             String               @unique @db.VarChar(30)
-  userId                  String               @unique
+  id                      String                @id @default(cuid())
+  studentCode             String                @unique @db.VarChar(30)
+  userId                  String                @unique
   departmentId            String
   admissionAcademicYearId String?
-  fullName                String               @db.VarChar(150)
-  email                   String               @unique @db.VarChar(255)
-  phone                   String?              @db.VarChar(20)
-  dateOfBirth             DateTime?            @db.Date
+  fullName                String                @db.VarChar(150)
+  email                   String                @unique @db.VarChar(255)
+  phone                   String?               @db.VarChar(20)
+  dateOfBirth             DateTime?             @db.Date
   gender                  Gender?
-  address                 String?              @db.VarChar(500)
-  cohortClass             String               @db.VarChar(50)
-  cohort                  String               @db.VarChar(20)
-  enrollmentDate          DateTime             @db.Date
-  academicStatus          AcademicStatus       @default(STUDYING)
-  user                    User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
-  department              Department           @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  admissionAcademicYear   AcademicYear?        @relation(fields: [admissionAcademicYearId], references: [id], onDelete: SetNull)
+  address                 String?               @db.VarChar(500)
+  cohortClass             String                @db.VarChar(50)
+  cohort                  String                @db.VarChar(20)
+  enrollmentDate          DateTime              @db.Date
+  academicStatus          AcademicStatus        @default(STUDYING)
+  user                    User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  department              Department            @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  admissionAcademicYear   AcademicYear?         @relation(fields: [admissionAcademicYearId], references: [id], onDelete: SetNull)
   enrollments             Enrollment[]
   attendanceRecords       AttendanceRecord[]
   grades                  StudentGrade[]
@@ -390,8 +449,10 @@ model Student {
   examAttempts            ExamAttempt[]
   invoices                Invoice[]
   paymentTransactions     PaymentTransaction[]
-  createdAt               DateTime             @default(now())
-  updatedAt               DateTime             @updatedAt
+  studentScholarships     StudentScholarship[]
+  financialAdjustments    FinancialAdjustment[]
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
   deletedAt               DateTime?
 
   @@index([fullName])
@@ -402,39 +463,42 @@ model Student {
 }
 
 model AcademicYear {
-  id        String     @id @default(cuid())
-  code      String     @unique @db.VarChar(20)
-  name      String     @db.VarChar(100)
-  startDate DateTime   @db.Date
-  endDate   DateTime   @db.Date
-  isCurrent Boolean    @default(false)
-  semesters Semester[]
-  students  Student[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id           String        @id @default(cuid())
+  code         String        @unique @db.VarChar(20)
+  name         String        @db.VarChar(100)
+  startDate    DateTime      @db.Date
+  endDate      DateTime      @db.Date
+  isCurrent    Boolean       @default(false)
+  semesters    Semester[]
+  students     Student[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  tuitionRates TuitionRate[]
 
   @@index([startDate, endDate])
   @@index([isCurrent])
 }
 
 model Semester {
-  id                    String          @id @default(cuid())
+  id                    String               @id @default(cuid())
   academicYearId        String
-  code                  String          @unique @db.VarChar(30)
-  name                  String          @db.VarChar(100)
+  code                  String               @unique @db.VarChar(30)
+  name                  String               @db.VarChar(100)
   term                  SemesterTerm
-  startDate             DateTime        @db.Date
-  endDate               DateTime        @db.Date
+  startDate             DateTime             @db.Date
+  endDate               DateTime             @db.Date
   registrationStartDate DateTime
   registrationEndDate   DateTime
-  maxCredits            Int             @default(24)
-  status                SemesterStatus  @default(PLANNED)
-  academicYear          AcademicYear    @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  maxCredits            Int                  @default(24)
+  status                SemesterStatus       @default(PLANNED)
+  academicYear          AcademicYear         @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
   classSections         ClassSection[]
   tuitionPolicies       TuitionPolicy[]
   invoices              Invoice[]
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
+  tuitionRates          TuitionRate[]
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  studentScholarships   StudentScholarship[]
 
   @@unique([academicYearId, term])
   @@index([status, registrationStartDate, registrationEndDate])
@@ -458,6 +522,8 @@ model Course {
   questions           Question[]
   exams               Exam[]
   tuitionItems        TuitionItem[]
+  tuitionRates        TuitionRate[]
+  invoiceItems        InvoiceItem[]  @relation("CourseInvoiceItems")
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   deletedAt           DateTime?
@@ -527,12 +593,12 @@ model Schedule {
 }
 
 model Enrollment {
-  id             String           @id @default(cuid())
-  studentId      String
-  classSectionId String
-  status         EnrollmentStatus @default(ENROLLED)
-  enrolledAt     DateTime         @default(now())
-  droppedAt      DateTime?
+  id                          String           @id @default(cuid())
+  studentId                   String
+  classSectionId              String
+  status                      EnrollmentStatus @default(ENROLLED)
+  enrolledAt                  DateTime         @default(now())
+  droppedAt                   DateTime?
   finalScore                  Decimal?         @db.Decimal(5, 2)
   letterGrade                 String?          @db.VarChar(5)
   passed                      Boolean?
@@ -835,26 +901,38 @@ model TuitionItem {
 }
 
 model Invoice {
-  id                String               @id @default(cuid())
-  invoiceCode       String               @unique @db.VarChar(50)
+  id                String                @id @default(cuid())
+  invoiceCode       String                @unique @db.VarChar(50)
   studentId         String
   semesterId        String
-  subtotal          Decimal              @db.Decimal(18, 0)
-  discountAmount    Decimal              @default(0) @db.Decimal(18, 0)
-  scholarshipAmount Decimal              @default(0) @db.Decimal(18, 0)
-  previousDebt      Decimal              @default(0) @db.Decimal(18, 0)
-  totalAmount       Decimal              @db.Decimal(18, 0)
-  paidAmount        Decimal              @default(0) @db.Decimal(18, 0)
-  balanceAmount     Decimal              @db.Decimal(18, 0)
-  dueDate           DateTime             @db.Date
-  status            InvoiceStatus        @default(UNPAID)
-  student           Student              @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  semester          Semester             @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+  subtotal          Decimal               @db.Decimal(18, 0)
+  discountAmount    Decimal               @default(0) @db.Decimal(18, 0)
+  scholarshipAmount Decimal               @default(0) @db.Decimal(18, 0)
+  previousDebt      Decimal               @default(0) @db.Decimal(18, 0)
+  totalAmount       Decimal               @db.Decimal(18, 0)
+  paidAmount        Decimal               @default(0) @db.Decimal(18, 0)
+  balanceAmount     Decimal               @db.Decimal(18, 0)
+  dueDate           DateTime              @db.Date
+  status            InvoiceStatus         @default(UNPAID)
+  student           Student               @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  semester          Semester              @relation(fields: [semesterId], references: [id], onDelete: Restrict)
   items             InvoiceItem[]
   payments          PaymentTransaction[]
   receipts          Receipt[]
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+  issueDate         DateTime?             @db.Date
+  notes             String?               @db.Text
+  issuedByUserId    String?
+  issuedAt          DateTime?
+  cancelledByUserId String?
+  cancelledAt       DateTime?
+  cancelReason      String?               @db.VarChar(500)
+  adjustmentAmount  Decimal               @default(0) @db.Decimal(18, 0)
+  issuedBy          User?                 @relation("InvoiceIssuer", fields: [issuedByUserId], references: [id], onDelete: SetNull)
+  cancelledBy       User?                 @relation("InvoiceCanceller", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+  allocations       PaymentAllocation[]
+  adjustments       FinancialAdjustment[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
 
   @@unique([studentId, semesterId])
   @@index([studentId, status])
@@ -863,43 +941,62 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id            String       @id @default(cuid())
-  invoiceId     String
-  tuitionItemId String?
-  description   String       @db.VarChar(300)
-  quantity      Int          @default(1)
-  unitAmount    Decimal      @db.Decimal(18, 0)
-  totalAmount   Decimal      @db.Decimal(18, 0)
-  invoice       Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  tuitionItem   TuitionItem? @relation(fields: [tuitionItemId], references: [id], onDelete: SetNull)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                  String       @id @default(cuid())
+  invoiceId           String
+  tuitionItemId       String?
+  description         String       @db.VarChar(300)
+  quantity            Int          @default(1)
+  unitAmount          Decimal      @db.Decimal(18, 0)
+  totalAmount         Decimal      @db.Decimal(18, 0)
+  invoice             Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  tuitionItem         TuitionItem? @relation(fields: [tuitionItemId], references: [id], onDelete: SetNull)
+  feeTypeId           String?
+  courseId            String?
+  enrollmentId        String?
+  discountAmount      Decimal      @default(0) @db.Decimal(18, 0)
+  calculationSnapshot Json?
+  feeType             FeeType?     @relation(fields: [feeTypeId], references: [id], onDelete: SetNull)
+  course              Course?      @relation("CourseInvoiceItems", fields: [courseId], references: [id], onDelete: SetNull)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
   @@index([invoiceId])
   @@index([tuitionItemId])
 }
 
 model PaymentTransaction {
-  id                    String           @id @default(cuid())
-  transactionCode       String           @unique @db.VarChar(50)
+  id                    String              @id @default(cuid())
+  transactionCode       String              @unique @db.VarChar(50)
   invoiceId             String
   studentId             String
-  provider              PaymentProvider  @default(MOCK)
-  externalTransactionId String?          @unique @db.VarChar(100)
-  idempotencyKey        String           @unique @db.VarChar(100)
-  amount                Decimal          @db.Decimal(18, 0)
-  currency              String           @default("VND") @db.Char(3)
-  status                PaymentStatus    @default(PENDING)
-  failureReason         String?          @db.VarChar(500)
-  initiatedAt           DateTime         @default(now())
+  provider              PaymentProvider     @default(MOCK)
+  externalTransactionId String?             @unique @db.VarChar(100)
+  idempotencyKey        String              @unique @db.VarChar(100)
+  amount                Decimal             @db.Decimal(18, 0)
+  currency              String              @default("VND") @db.Char(3)
+  status                PaymentStatus       @default(PENDING)
+  failureReason         String?             @db.VarChar(500)
+  initiatedAt           DateTime            @default(now())
   completedAt           DateTime?
   metadata              Json?
-  invoice               Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
-  student               Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  invoice               Invoice?            @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  student               Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
   webhooks              PaymentWebhook[]
   receipt               Receipt?
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
+  method                PaymentMethod       @default(OTHER)
+  notes                 String?             @db.Text
+  receivedByUserId      String?
+  verifiedByUserId      String?
+  verifiedAt            DateTime?
+  cancelledByUserId     String?
+  cancelledAt           DateTime?
+  cancelReason          String?             @db.VarChar(500)
+  receivedBy            User?               @relation("PaymentReceiver", fields: [receivedByUserId], references: [id], onDelete: SetNull)
+  verifiedBy            User?               @relation("PaymentVerifier", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  cancelledBy           User?               @relation("PaymentCanceller", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+  allocations           PaymentAllocation[]
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 
   @@index([invoiceId, status])
   @@index([studentId, createdAt])
@@ -934,6 +1031,11 @@ model Receipt {
   issuedAt             DateTime           @default(now())
   invoice              Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
   paymentTransaction   PaymentTransaction @relation(fields: [paymentTransactionId], references: [id], onDelete: Restrict)
+  status               ReceiptStatus      @default(ISSUED)
+  issuedByUserId       String?
+  cancelledAt          DateTime?
+  cancelReason         String?            @db.VarChar(500)
+  issuedBy             User?              @relation("ReceiptIssuer", fields: [issuedByUserId], references: [id], onDelete: SetNull)
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -954,4 +1056,134 @@ model Notification {
 
   @@index([userId, readAt, createdAt])
   @@index([type, createdAt])
+}
+
+model FeeType {
+  id                String               @id @default(cuid())
+  code              String               @unique @db.VarChar(50)
+  name              String               @db.VarChar(200)
+  description       String?              @db.Text
+  category          FeeCategory          @default(OTHER)
+  calculationMethod FeeCalculationMethod @default(FIXED)
+  defaultAmount     Decimal              @default(0) @db.Decimal(18, 0)
+  isMandatory       Boolean              @default(false)
+  isActive          Boolean              @default(true)
+  tuitionRates      TuitionRate[]
+  invoiceItems      InvoiceItem[]
+  scholarships      Scholarship[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([isActive])
+}
+
+model TuitionRate {
+  id              String    @id @default(cuid())
+  academicYearId  String?
+  semesterId      String?
+  departmentId    String?
+  courseId        String?
+  feeTypeId       String
+  amountPerCredit Decimal?  @db.Decimal(18, 0)
+  fixedAmount     Decimal?  @db.Decimal(18, 0)
+  effectiveFrom   DateTime  @db.Date
+  effectiveTo     DateTime? @db.Date
+  isActive        Boolean   @default(true)
+
+  academicYear AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+  semester     Semester?     @relation(fields: [semesterId], references: [id], onDelete: SetNull)
+  department   Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  course       Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  feeType      FeeType       @relation(fields: [feeTypeId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([feeTypeId, isActive])
+  @@index([academicYearId])
+  @@index([semesterId])
+  @@index([courseId])
+  @@index([effectiveFrom, effectiveTo])
+}
+
+model Scholarship {
+  id                  String       @id @default(cuid())
+  code                String       @unique @db.VarChar(50)
+  name                String       @db.VarChar(200)
+  description         String?      @db.Text
+  discountType        DiscountType
+  discountValue       Decimal      @db.Decimal(18, 2)
+  maximumAmount       Decimal?     @db.Decimal(18, 0)
+  applicableFeeTypeId String?
+  effectiveFrom       DateTime     @db.Date
+  effectiveTo         DateTime?    @db.Date
+  isActive            Boolean      @default(true)
+
+  applicableFeeType   FeeType?             @relation(fields: [applicableFeeTypeId], references: [id], onDelete: SetNull)
+  studentScholarships StudentScholarship[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([effectiveFrom, effectiveTo])
+}
+
+model StudentScholarship {
+  id               String            @id @default(cuid())
+  studentId        String
+  scholarshipId    String
+  semesterId       String?
+  status           ScholarshipStatus @default(APPROVED)
+  notes            String?           @db.Text
+  approvedByUserId String?
+  approvedAt       DateTime?
+
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  scholarship Scholarship @relation(fields: [scholarshipId], references: [id], onDelete: Restrict)
+  semester    Semester?   @relation(fields: [semesterId], references: [id], onDelete: SetNull)
+  approvedBy  User?       @relation("ScholarshipApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, scholarshipId, semesterId])
+  @@index([studentId, status])
+}
+
+model PaymentAllocation {
+  id                   String  @id @default(cuid())
+  paymentTransactionId String
+  invoiceId            String
+  amount               Decimal @db.Decimal(18, 0)
+
+  paymentTransaction PaymentTransaction @relation(fields: [paymentTransactionId], references: [id], onDelete: Cascade)
+  invoice            Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([paymentTransactionId, invoiceId])
+  @@index([invoiceId])
+  @@index([paymentTransactionId])
+}
+
+model FinancialAdjustment {
+  id              String                  @id @default(cuid())
+  studentId       String
+  invoiceId       String?
+  type            FinancialAdjustmentType
+  amount          Decimal                 @db.Decimal(18, 0)
+  reason          String                  @db.VarChar(500)
+  createdByUserId String?
+
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation("AdjustmentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([invoiceId])
 }

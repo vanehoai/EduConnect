@@ -79,9 +79,9 @@ export class QuestionsService {
 
     return this.prisma.question.update({
       where: { id },
-      data: { 
+      data: {
         status: RecordStatus.ARCHIVED,
-        deletedAt: new Date()
+        deletedAt: new Date(),
       },
     });
   }
@@ -95,7 +95,9 @@ export class QuestionsService {
       throw new NotFoundException(`Course with code ${courseCode} not found`);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const records: any[] = await new Promise((resolve, reject) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const results: any[] = [];
       const stream = Readable.from(buffer);
       stream
@@ -124,8 +126,10 @@ export class QuestionsService {
         if (record.options) {
           try {
             optionsData = JSON.parse(record.options);
-          } catch (e) {
-            throw new BadRequestException(`Invalid JSON for options in questionCode ${record.questionCode}`);
+          } catch (_e) {
+            throw new BadRequestException(
+              `Invalid JSON for options in questionCode ${record.questionCode}`,
+            );
           }
         }
 
@@ -141,6 +145,7 @@ export class QuestionsService {
             defaultScore: record.defaultScore ? parseFloat(record.defaultScore) : 1,
             createdByUserId: userId,
             options: {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               create: optionsData.map((opt: any, index: number) => ({
                 content: opt.content,
                 isCorrect: opt.isCorrect,
@@ -165,9 +170,9 @@ export class QuestionsService {
     }
 
     const questions = await this.prisma.question.findMany({
-      where: { 
+      where: {
         courseId: course.id,
-        status: { not: RecordStatus.ARCHIVED }
+        status: { not: RecordStatus.ARCHIVED },
       },
       include: { options: true },
     });
@@ -182,7 +187,16 @@ export class QuestionsService {
       return str;
     };
 
-    const headers = ['questionCode', 'content', 'chapter', 'difficulty', 'type', 'explanation', 'defaultScore', 'options'];
+    const headers = [
+      'questionCode',
+      'content',
+      'chapter',
+      'difficulty',
+      'type',
+      'explanation',
+      'defaultScore',
+      'options',
+    ];
     let csvContent = headers.join(',') + '\n';
 
     for (const q of questions) {
@@ -194,7 +208,7 @@ export class QuestionsService {
         q.type,
         `"${sanitize(q.explanation || '').replace(/"/g, '""')}"`,
         q.defaultScore.toString(),
-        `"${sanitize(JSON.stringify(q.options.map(o => ({ content: o.content, isCorrect: o.isCorrect })))).replace(/"/g, '""')}"`,
+        `"${sanitize(JSON.stringify(q.options.map((o) => ({ content: o.content, isCorrect: o.isCorrect })))).replace(/"/g, '""')}"`,
       ];
       csvContent += row.join(',') + '\n';
     }

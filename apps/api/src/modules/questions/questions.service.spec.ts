@@ -1,12 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { QuestionsService } from './questions.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { QuestionType, DifficultyLevel, RecordStatus } from '@prisma/client';
 
 describe('QuestionsService', () => {
   let service: QuestionsService;
-  let prisma: PrismaService;
+  // let prisma: PrismaService;
 
   const mockPrismaService = {
     question: {
@@ -55,9 +55,9 @@ describe('QuestionsService', () => {
     mockPrismaService.question.create.mockResolvedValue({ id: '1', ...createDto });
 
     // Mocking the missing validation implementation for the sake of the test
-    jest.spyOn(service, 'create').mockImplementationOnce(async (dto, userId) => {
+    jest.spyOn(service, 'create').mockImplementationOnce(async (dto, _userId) => {
       if (dto.type === QuestionType.SINGLE_CHOICE) {
-        const correctCount = dto.options?.filter(o => o.isCorrect).length || 0;
+        const correctCount = dto.options?.filter((o) => o.isCorrect).length || 0;
         if (correctCount !== 1) throw new BadRequestException();
       }
       return mockPrismaService.question.create({ data: dto });
@@ -81,8 +81,8 @@ describe('QuestionsService', () => {
       ],
     };
 
-    jest.spyOn(service, 'create').mockImplementationOnce(async (dto, userId) => {
-      const correctCount = dto.options?.filter(o => o.isCorrect).length || 0;
+    jest.spyOn(service, 'create').mockImplementationOnce(async (dto, _userId) => {
+      const correctCount = dto.options?.filter((o) => o.isCorrect).length || 0;
       if (dto.type === QuestionType.SINGLE_CHOICE && correctCount > 1) {
         throw new BadRequestException('Single choice must have exactly one correct answer');
       }
@@ -105,8 +105,8 @@ describe('QuestionsService', () => {
       ],
     };
 
-    jest.spyOn(service, 'create').mockImplementationOnce(async (dto, userId) => {
-      const correctCount = dto.options?.filter(o => o.isCorrect).length || 0;
+    jest.spyOn(service, 'create').mockImplementationOnce(async (dto, _userId) => {
+      const correctCount = dto.options?.filter((o) => o.isCorrect).length || 0;
       if (dto.type === QuestionType.MULTIPLE_CHOICE && correctCount === 0) {
         throw new BadRequestException('Multiple choice must have at least one correct answer');
       }
@@ -130,7 +130,7 @@ describe('QuestionsService', () => {
       ],
     };
 
-    jest.spyOn(service, 'create').mockImplementationOnce(async (dto, userId) => {
+    jest.spyOn(service, 'create').mockImplementationOnce(async (dto, _userId) => {
       if (dto.type === QuestionType.TRUE_FALSE && dto.options?.length !== 2) {
         throw new BadRequestException('True/False must have exactly two options');
       }
@@ -148,23 +148,25 @@ describe('QuestionsService', () => {
     };
     mockPrismaService.question.findUnique.mockResolvedValue(existingQuestion);
 
-    jest.spyOn(service, 'update').mockImplementationOnce(async (id, dto, userId?: string) => {
+    jest.spyOn(service, 'update').mockImplementationOnce(async (id, dto, _userId?: string) => {
       const q = await service.findOne(id);
-      if (userId && q.createdByUserId !== userId) {
+      if (_userId && q.createdByUserId !== _userId) {
         throw new ForbiddenException();
       }
       return mockPrismaService.question.update({ where: { id }, data: dto });
     });
 
-    // Pass userId as 3rd param assuming implementation will be updated to accept it
-    await expect((service.update as any)('1', { content: 'new' }, 'another-user')).rejects.toThrow(ForbiddenException);
+    // Pass _userId as 3rd param assuming implementation will be updated to accept it
+    await expect(
+      (service.update as Record<string, unknown>)('1', { content: 'new' }, 'another-user'),
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('6. Không lộ correct answer (Mock export để kiểm tra)', async () => {
     // If testing that findOne doesn't leak correct answer to students, we mock it.
     // The prompt says "Mock export để kiểm tra", which could mean we intercept an export function
-    // and verify correct answers are hidden, or it could mean masking. 
-    // We will test that exportCsv does not contain "isCorrect":true if it's masked, 
+    // and verify correct answers are hidden, or it could mean masking.
+    // We will test that exportCsv does not contain "isCorrect":true if it's masked,
     // or we just mock a method 'exportForStudent' that filters it.
     // Based on the prompt literal:
     const mockQuestions = [
@@ -173,12 +175,12 @@ describe('QuestionsService', () => {
         content: 'Question 1',
         defaultScore: 1,
         options: [{ content: 'A', isCorrect: true }],
-      }
+      },
     ];
     mockPrismaService.course.findUnique.mockResolvedValue({ id: 'course1' });
     mockPrismaService.question.findMany.mockResolvedValue(mockQuestions);
 
-    // Let's assume there's a requirement that export masks the answer somehow, 
+    // Let's assume there's a requirement that export masks the answer somehow,
     // or we just verify we can mock the export and check the output.
     const csv = await service.exportCsv('courseCode');
     expect(csv).toBeDefined();
@@ -188,10 +190,12 @@ describe('QuestionsService', () => {
 
   it('7. CSV rollback (Mock transaction lỗi)', async () => {
     mockPrismaService.course.findUnique.mockResolvedValue({ id: 'course1' });
-    
+
     // Create a dummy CSV buffer
-    const csvBuffer = Buffer.from('questionCode,content,difficulty,type\nQ1,Test,EASY,SINGLE_CHOICE');
-    
+    const csvBuffer = Buffer.from(
+      'questionCode,content,difficulty,type\nQ1,Test,EASY,SINGLE_CHOICE',
+    );
+
     // Mock transaction to throw
     mockPrismaService.$transaction.mockRejectedValueOnce(new Error('DB Error'));
 
@@ -210,12 +214,12 @@ describe('QuestionsService', () => {
         type: QuestionType.SINGLE_CHOICE,
         defaultScore: 1,
         options: [],
-      }
+      },
     ];
     mockPrismaService.question.findMany.mockResolvedValue(mockQuestions);
 
     const csv = await service.exportCsv('courseCode');
-    
+
     // The exported CSV should have formula injection prevention (like prefixing with ')
     expect(csv).toContain(`'=1+1`);
     expect(csv).toContain(`'+SUM(1,1)`);

@@ -1,6 +1,6 @@
 import { apiRequest, apiRequestEnvelope } from '../api-client';
 import type { Exam } from './exam.service';
-import type { QuestionOption, QuestionType } from './question.service';
+import type { QuestionType } from './question.service';
 
 export type AttemptStatus = 'IN_PROGRESS' | 'SUBMITTED' | 'AUTO_SUBMITTED' | 'GRADED';
 
@@ -55,12 +55,12 @@ export const examAttemptService = {
   startAttempt: (examId: string) =>
     apiRequest<{ attempt: ExamAttempt; questions: AttemptQuestion[] }>(
       `/exam-attempts/start/${examId}`,
-      { method: 'POST' }
+      { method: 'POST' },
     ),
 
   getAttempt: (attemptId: string) =>
     apiRequest<{ attempt: ExamAttempt; questions: AttemptQuestion[] }>(
-      `/exam-attempts/${attemptId}`
+      `/exam-attempts/${attemptId}`,
     ),
 
   saveAnswer: (attemptId: string, data: SaveAnswerDto) =>
@@ -73,7 +73,7 @@ export const examAttemptService = {
     apiRequest<ExamAttempt>(`/exam-attempts/${attemptId}/submit`, {
       method: 'POST',
     }),
-    
+
   getAttemptResult: (attemptId: string) =>
-    apiRequest<any>(`/exam-attempts/${attemptId}/result`),
+    apiRequest<Record<string, unknown>>(`/exam-attempts/${attemptId}/result`),
 };

@@ -5,10 +5,17 @@ import { useState } from 'react';
 import { examService } from '@/lib/services/exam.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export default function ExamsAdminPage() {
-  const [courseId, setCourseId] = useState('');
+  const [courseId] = useState('');
   const [search, setSearch] = useState('');
 
   const { data: examsResponse, isLoading } = useQuery({
@@ -26,8 +33,8 @@ export default function ExamsAdminPage() {
       </div>
 
       <div className="flex items-center gap-4">
-        <Input 
-          placeholder="Tìm kiếm kỳ thi..." 
+        <Input
+          placeholder="Tìm kiếm kỳ thi..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
@@ -47,9 +54,17 @@ export default function ExamsAdminPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center">Đang tải...</TableCell></TableRow>
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  Đang tải...
+                </TableCell>
+              </TableRow>
             ) : exams.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center">Không có dữ liệu</TableCell></TableRow>
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
             ) : (
               exams.map((exam) => (
                 <TableRow key={exam.id}>
@@ -58,7 +73,9 @@ export default function ExamsAdminPage() {
                   <TableCell>{exam.status}</TableCell>
                   <TableCell>{exam.durationMinutes} phút</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm">Cấu hình</Button>
+                    <Button variant="ghost" size="sm">
+                      Cấu hình
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))

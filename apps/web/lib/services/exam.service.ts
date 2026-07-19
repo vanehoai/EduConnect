@@ -87,9 +87,7 @@ export const examService = {
       body: JSON.stringify(data),
     }),
 
-  deleteExam: (id: string) =>
-    apiRequest<void>(`/exams/${id}`, { method: 'DELETE' }),
+  deleteExam: (id: string) => apiRequest<void>(`/exams/${id}`, { method: 'DELETE' }),
 
-  publishExam: (id: string) =>
-    apiRequest<Exam>(`/exams/${id}/publish`, { method: 'POST' }),
+  publishExam: (id: string) => apiRequest<Exam>(`/exams/${id}/publish`, { method: 'POST' }),
 };

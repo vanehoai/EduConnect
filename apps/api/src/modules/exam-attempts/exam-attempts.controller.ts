@@ -24,10 +24,7 @@ export class ExamAttemptsController {
   }
 
   @Get('exam-attempts/:id')
-  getAttemptDetails(
-    @Param('id') attemptId: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
+  getAttemptDetails(@Param('id') attemptId: string, @CurrentUser() user: AuthenticatedUser) {
     return this.examAttemptsService.getAttemptDetails(attemptId, user);
   }
 
@@ -39,15 +36,17 @@ export class ExamAttemptsController {
     @Body() dto: AutoSaveAnswerDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.examAttemptsService.autoSaveAnswer(attemptId, questionId, dto.selectedOptionIds, user.id);
+    return this.examAttemptsService.autoSaveAnswer(
+      attemptId,
+      questionId,
+      dto.selectedOptionIds,
+      user.id,
+    );
   }
 
   @Post('exam-attempts/:id/submit')
   @Permissions('attempt.submit')
-  submitAttempt(
-    @Param('id') attemptId: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
+  submitAttempt(@Param('id') attemptId: string, @CurrentUser() user: AuthenticatedUser) {
     return this.examAttemptsService.submitAttempt(attemptId, user.id);
   }
 }

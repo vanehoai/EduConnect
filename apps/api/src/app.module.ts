@@ -26,6 +26,7 @@ import { GradesModule } from './modules/grades/grades.module';
 import { QuestionsModule } from './modules/questions/questions.module';
 import { ExamsModule } from './modules/exams/exams.module';
 import { ExamAttemptsModule } from './modules/exam-attempts/exam-attempts.module';
+import { FinanceModule } from './modules/finance/finance.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { ExamAttemptsModule } from './modules/exam-attempts/exam-attempts.module
     QuestionsModule,
     ExamsModule,
     ExamAttemptsModule,
+    FinanceModule,
   ],
   providers: [
     {

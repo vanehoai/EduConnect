@@ -19,7 +19,7 @@ export default function NewAttemptPage() {
     onError: () => {
       alert('Không thể bắt đầu kỳ thi. Vui lòng thử lại.');
       router.replace('/dashboard/student/exams');
-    }
+    },
   });
 
   useEffect(() => {
