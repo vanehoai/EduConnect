@@ -5,8 +5,12 @@ require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 
 async function getCounts(prisma) {
   return {
-    Permission: await prisma.$queryRaw`SELECT count(*) FROM "Permission"`.then(r => Number(r[0].count)),
-    RolePermission: await prisma.$queryRaw`SELECT count(*) FROM "RolePermission"`.then(r => Number(r[0].count)),
+    Permission: await prisma.$queryRaw`SELECT count(*) FROM "Permission"`.then((r) =>
+      Number(r[0].count),
+    ),
+    RolePermission: await prisma.$queryRaw`SELECT count(*) FROM "RolePermission"`.then((r) =>
+      Number(r[0].count),
+    ),
     Question: await prisma.question.count(),
     QuestionOption: await prisma.questionOption.count(),
     Exam: await prisma.exam.count(),

@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-school}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-school_dev_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-school_management}
     ports:
       - '${POSTGRES_PORT:-5432}:5432'
@@ -40,7 +40,7 @@ services:
       NODE_ENV: production
       PORT: 4000
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-school}:${POSTGRES_PASSWORD:-school_dev_password}@postgres:5432/${POSTGRES_DB:-school_management}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-school}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-school_management}?schema=public
       REDIS_URL: redis://redis:6379
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-development-access-secret-change-before-production}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-development-refresh-secret-change-before-production}

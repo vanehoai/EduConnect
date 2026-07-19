@@ -4,7 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { examAttemptService } from '@/lib/services/exam-attempt.service';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Clock } from 'lucide-react';
 
 export default function StudentExamsPage() {
@@ -43,9 +50,11 @@ export default function StudentExamsPage() {
                 <p className="text-sm">Số lần làm tối đa: {exam.maxAttempts}</p>
               </CardContent>
               <CardFooter>
-                <Button 
-                  className="w-full" 
-                  onClick={() => router.push(`/dashboard/student/exam-attempts/new?examId=${exam.id}`)}
+                <Button
+                  className="w-full"
+                  onClick={() =>
+                    router.push(`/dashboard/student/exam-attempts/new?examId=${exam.id}`)
+                  }
                 >
                   Vào thi
                 </Button>

@@ -27,7 +27,7 @@ try {
   execSync('npx jest src/modules/exam-attempts/exam-attempts.integration.spec.ts --runInBand', {
     stdio: 'inherit',
     env: process.env,
-    cwd: path.join(__dirname, '..')
+    cwd: path.join(__dirname, '..'),
   });
 } catch (e) {
   console.error('Integration tests failed');

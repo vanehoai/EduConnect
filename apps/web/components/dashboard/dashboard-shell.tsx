@@ -13,6 +13,9 @@ import {
   FileQuestion,
   FileText,
   Clock,
+  Banknote,
+  Receipt,
+  CreditCard,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -144,6 +147,42 @@ const menuItems: MenuItem[] = [
     label: 'Kỳ thi trực tuyến',
     icon: Clock,
     href: '/dashboard/student/exams',
+    roles: ['STUDENT'],
+  },
+  {
+    label: 'Loại học phí',
+    icon: Banknote,
+    href: '/dashboard/finance/fee-types',
+    roles: ['ADMIN', 'FINANCE_STAFF'],
+  },
+  {
+    label: 'Định mức học phí',
+    icon: Banknote,
+    href: '/dashboard/finance/tuition-rates',
+    roles: ['ADMIN', 'FINANCE_STAFF'],
+  },
+  {
+    label: 'Học bổng',
+    icon: Banknote,
+    href: '/dashboard/finance/scholarships',
+    roles: ['ADMIN', 'FINANCE_STAFF'],
+  },
+  {
+    label: 'Hóa đơn học phí',
+    icon: Receipt,
+    href: '/dashboard/finance/invoices',
+    roles: ['ADMIN', 'FINANCE_STAFF'],
+  },
+  {
+    label: 'Phiếu thu',
+    icon: Receipt,
+    href: '/dashboard/finance/receipts',
+    roles: ['ADMIN', 'FINANCE_STAFF'],
+  },
+  {
+    label: 'Tài chính - Học phí',
+    icon: CreditCard,
+    href: '/dashboard/student/finance',
     roles: ['STUDENT'],
   },
 ];

@@ -1,12 +1,4 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete 
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { ExamsService } from './exams.service';
 import { CreateExamDto } from './dto/create-exam.dto';
 import { UpdateExamDto } from './dto/update-exam.dto';
@@ -42,7 +34,7 @@ export class ExamsController {
   @Patch(':id')
   @Permissions('exam.update')
   update(
-    @Param('id') id: string, 
+    @Param('id') id: string,
     @Body() updateExamDto: UpdateExamDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {

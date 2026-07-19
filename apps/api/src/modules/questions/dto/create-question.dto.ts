@@ -1,14 +1,14 @@
 import { Type } from 'class-transformer';
-import { 
-  IsString, 
-  IsNotEmpty, 
-  IsOptional, 
-  IsEnum, 
-  IsBoolean, 
-  IsNumber, 
-  ValidateNested, 
-  IsArray, 
-  Min
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsBoolean,
+  IsNumber,
+  ValidateNested,
+  IsArray,
+  Min,
 } from 'class-validator';
 import { DifficultyLevel, QuestionType } from '@prisma/client';
 

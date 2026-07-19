@@ -1,13 +1,13 @@
 import { Type } from 'class-transformer';
-import { 
-  IsString, 
-  IsNotEmpty, 
-  IsOptional, 
-  IsEnum, 
-  IsBoolean, 
-  IsNumber, 
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsBoolean,
+  IsNumber,
   IsDate,
-  Min
+  Min,
 } from 'class-validator';
 import { ShowResultMode } from '@prisma/client';
 

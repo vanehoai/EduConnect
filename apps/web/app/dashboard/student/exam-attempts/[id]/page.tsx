@@ -4,20 +4,19 @@ import React from 'react';
 
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { examAttemptService, type AttemptQuestion } from '@/lib/services/exam-attempt.service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { LoaderCircle, Save, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
-import { useDebounce } from '@/lib/hooks/use-debounce'; // I will need to create this or use simple debounce
+import { LoaderCircle, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 
 export default function ExamAttemptPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id: attemptId } = React.use(params);
-  
+
   const { data, isLoading } = useQuery({
     queryKey: ['attempt', attemptId],
     queryFn: () => examAttemptService.getAttempt(attemptId),
@@ -37,7 +36,7 @@ export default function ExamAttemptPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     if (attempt?.answers) {
       const initialAnswers: Record<string, string[]> = {};
-      attempt.answers.forEach(ans => {
+      attempt.answers.forEach((ans) => {
         if (ans.selectedOptionIds) {
           initialAnswers[ans.questionId] = ans.selectedOptionIds;
         }
@@ -56,7 +55,7 @@ export default function ExamAttemptPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     if (timeLeft === null || timeLeft <= 0) return;
     const interval = setInterval(() => {
-      setTimeLeft(prev => {
+      setTimeLeft((prev) => {
         if (prev !== null && prev <= 1) {
           clearInterval(interval);
           submitMutation.mutate();
@@ -69,7 +68,7 @@ export default function ExamAttemptPage({ params }: { params: Promise<{ id: stri
   }, [timeLeft]);
 
   const saveMutation = useMutation({
-    mutationFn: (args: { questionId: string; selectedOptionIds: string[] }) => 
+    mutationFn: (args: { questionId: string; selectedOptionIds: string[] }) =>
       examAttemptService.saveAnswer(attemptId, args),
     onMutate: () => setSaveStatus('saving'),
     onSuccess: () => setSaveStatus('saved'),
@@ -80,23 +79,27 @@ export default function ExamAttemptPage({ params }: { params: Promise<{ id: stri
     mutationFn: () => examAttemptService.submitAttempt(attemptId),
     onSuccess: () => {
       router.replace(`/dashboard/student/exam-results/${attemptId}`);
-    }
+    },
   });
 
-  const handleSelectOption = (questionId: string, optionId: string, type: AttemptQuestion['type']) => {
-    setAnswers(prev => {
+  const handleSelectOption = (
+    questionId: string,
+    optionId: string,
+    type: AttemptQuestion['type'],
+  ) => {
+    setAnswers((prev) => {
       const newAnswers = { ...prev };
       if (type === 'MULTIPLE_CHOICE' || type === 'TRUE_FALSE') {
         newAnswers[questionId] = [optionId];
       } else if (type === 'MULTIPLE_SELECT') {
         const current = newAnswers[questionId] || [];
         if (current.includes(optionId)) {
-          newAnswers[questionId] = current.filter(id => id !== optionId);
+          newAnswers[questionId] = current.filter((id) => id !== optionId);
         } else {
           newAnswers[questionId] = [...current, optionId];
         }
       }
-      
+
       // trigger save
       saveMutation.mutate({ questionId, selectedOptionIds: newAnswers[questionId] || [] });
       return newAnswers;
@@ -130,13 +133,27 @@ export default function ExamAttemptPage({ params }: { params: Promise<{ id: stri
               <Clock className="h-5 w-5" />
               {timeLeft !== null ? formatTime(timeLeft) : '--:--'}
             </div>
-            
+
             <div className="flex items-center justify-between text-sm mb-4">
-              <span>Đã làm: {Object.keys(answers).length}/{questions.length}</span>
+              <span>
+                Đã làm: {Object.keys(answers).length}/{questions.length}
+              </span>
               <span className="flex items-center gap-1">
-                {saveStatus === 'saving' && <><LoaderCircle className="h-3 w-3 animate-spin"/> Đang lưu</>}
-                {saveStatus === 'saved' && <><CheckCircle2 className="h-3 w-3 text-green-500"/> Đã lưu</>}
-                {saveStatus === 'error' && <><AlertTriangle className="h-3 w-3 text-red-500"/> Lỗi lưu</>}
+                {saveStatus === 'saving' && (
+                  <>
+                    <LoaderCircle className="h-3 w-3 animate-spin" /> Đang lưu
+                  </>
+                )}
+                {saveStatus === 'saved' && (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 text-green-500" /> Đã lưu
+                  </>
+                )}
+                {saveStatus === 'error' && (
+                  <>
+                    <AlertTriangle className="h-3 w-3 text-red-500" /> Lỗi lưu
+                  </>
+                )}
               </span>
             </div>
 
@@ -158,10 +175,10 @@ export default function ExamAttemptPage({ params }: { params: Promise<{ id: stri
                 );
               })}
             </div>
-            
+
             <div className="mt-8">
-              <Button 
-                className="w-full font-bold" 
+              <Button
+                className="w-full font-bold"
                 variant="default"
                 onClick={handleSubmit}
                 disabled={submitMutation.isPending}
@@ -183,53 +200,88 @@ export default function ExamAttemptPage({ params }: { params: Promise<{ id: stri
                 {currentQuestion.points} điểm
               </span>
             </div>
-            
-            <div className="prose max-w-none mb-8 text-lg">
-              {currentQuestion.content}
-            </div>
+
+            <div className="prose max-w-none mb-8 text-lg">{currentQuestion.content}</div>
 
             <div className="space-y-4">
-              {currentQuestion.type === 'MULTIPLE_CHOICE' || currentQuestion.type === 'TRUE_FALSE' ? (
-                <RadioGroup 
+              {currentQuestion.type === 'MULTIPLE_CHOICE' ||
+              currentQuestion.type === 'TRUE_FALSE' ? (
+                <RadioGroup
                   value={answers[currentQuestion.questionId]?.[0] || ''}
-                  onValueChange={(val: string) => handleSelectOption(currentQuestion.questionId, val, currentQuestion.type)}
+                  onValueChange={(val: string) =>
+                    handleSelectOption(currentQuestion.questionId, val, currentQuestion.type)
+                  }
                 >
-                  {currentQuestion.options.map(opt => (
-                    <div key={opt.id} className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => handleSelectOption(currentQuestion.questionId, opt.id, currentQuestion.type)}>
+                  {currentQuestion.options.map((opt) => (
+                    <div
+                      key={opt.id}
+                      className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-slate-50 cursor-pointer transition-colors"
+                      onClick={() =>
+                        handleSelectOption(currentQuestion.questionId, opt.id, currentQuestion.type)
+                      }
+                    >
                       <RadioGroupItem value={opt.id} id={opt.id} />
-                      <Label htmlFor={opt.id} className="flex-1 cursor-pointer text-base font-normal">{opt.content}</Label>
+                      <Label
+                        htmlFor={opt.id}
+                        className="flex-1 cursor-pointer text-base font-normal"
+                      >
+                        {opt.content}
+                      </Label>
                     </div>
                   ))}
                 </RadioGroup>
               ) : currentQuestion.type === 'MULTIPLE_SELECT' ? (
                 <div className="space-y-3">
-                  {currentQuestion.options.map(opt => {
+                  {currentQuestion.options.map((opt) => {
                     const isChecked = (answers[currentQuestion.questionId] || []).includes(opt.id);
                     return (
-                      <div key={opt.id} className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => handleSelectOption(currentQuestion.questionId, opt.id, currentQuestion.type)}>
-                        <Checkbox 
-                          id={opt.id} 
+                      <div
+                        key={opt.id}
+                        className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-slate-50 cursor-pointer transition-colors"
+                        onClick={() =>
+                          handleSelectOption(
+                            currentQuestion.questionId,
+                            opt.id,
+                            currentQuestion.type,
+                          )
+                        }
+                      >
+                        <Checkbox
+                          id={opt.id}
                           checked={isChecked}
-                          onCheckedChange={() => handleSelectOption(currentQuestion.questionId, opt.id, currentQuestion.type)}
+                          onCheckedChange={() =>
+                            handleSelectOption(
+                              currentQuestion.questionId,
+                              opt.id,
+                              currentQuestion.type,
+                            )
+                          }
                         />
-                        <Label htmlFor={opt.id} className="flex-1 cursor-pointer text-base font-normal">{opt.content}</Label>
+                        <Label
+                          htmlFor={opt.id}
+                          className="flex-1 cursor-pointer text-base font-normal"
+                        >
+                          {opt.content}
+                        </Label>
                       </div>
-                    )
+                    );
                   })}
                 </div>
               ) : null}
             </div>
           </CardContent>
           <div className="border-t p-6 flex justify-between bg-slate-50 rounded-b-xl">
-            <Button 
-              variant="outline" 
-              onClick={() => setCurrentQuestionIdx(prev => Math.max(0, prev - 1))}
+            <Button
+              variant="outline"
+              onClick={() => setCurrentQuestionIdx((prev) => Math.max(0, prev - 1))}
               disabled={currentQuestionIdx === 0}
             >
               Câu trước
             </Button>
-            <Button 
-              onClick={() => setCurrentQuestionIdx(prev => Math.min(questions.length - 1, prev + 1))}
+            <Button
+              onClick={() =>
+                setCurrentQuestionIdx((prev) => Math.min(questions.length - 1, prev + 1))
+              }
               disabled={currentQuestionIdx === questions.length - 1}
             >
               Câu tiếp

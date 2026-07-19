@@ -101,6 +101,24 @@ const permissions = [
   ['result.read', 'Xem kết quả thi', 'result'],
   ['result.manage', 'Quản lý kết quả thi', 'result'],
   ['result.publish', 'Công bố kết quả thi', 'result'],
+  ['fee.read', 'Xem khoản thu', 'finance'],
+  ['fee.manage', 'Quản lý khoản thu', 'finance'],
+  ['tuition-rate.read', 'Xem đơn giá học phí', 'finance'],
+  ['tuition-rate.manage', 'Quản lý đơn giá học phí', 'finance'],
+  ['invoice.create', 'Tạo hóa đơn', 'finance'],
+  ['invoice.update', 'Cập nhật hóa đơn', 'finance'],
+  ['invoice.cancel', 'Hủy hóa đơn', 'finance'],
+  ['invoice.issue', 'Phát hành hóa đơn', 'finance'],
+  ['payment.create', 'Tạo thanh toán', 'finance'],
+  ['payment.verify', 'Xác nhận thanh toán', 'finance'],
+  ['payment.cancel', 'Hủy thanh toán', 'finance'],
+  ['receipt.read', 'Xem biên lai', 'finance'],
+  ['receipt.issue', 'Phát hành biên lai', 'finance'],
+  ['scholarship.read', 'Xem học bổng', 'finance'],
+  ['scholarship.manage', 'Quản lý học bổng', 'finance'],
+  ['adjustment.read', 'Xem điều chỉnh tài chính', 'finance'],
+  ['adjustment.manage', 'Quản lý điều chỉnh tài chính', 'finance'],
+  ['finance-report.read', 'Xem báo cáo tài chính', 'finance'],
 ] as const;
 
 const permissionMap: Record<string, string[]> = {
@@ -169,8 +187,26 @@ const permissionMap: Record<string, string[]> = {
     'student.read',
     'invoice.read',
     'invoice.manage',
+    'invoice.create',
+    'invoice.update',
+    'invoice.cancel',
+    'invoice.issue',
     'payment.read',
     'payment.manage',
+    'payment.create',
+    'payment.verify',
+    'payment.cancel',
+    'fee.read',
+    'fee.manage',
+    'tuition-rate.read',
+    'tuition-rate.manage',
+    'receipt.read',
+    'receipt.issue',
+    'scholarship.read',
+    'scholarship.manage',
+    'adjustment.read',
+    'adjustment.manage',
+    'finance-report.read',
   ],
   LECTURER: [
     'student.read',
@@ -669,6 +705,70 @@ async function main(): Promise<void> {
       name: 'Phí dịch vụ sinh viên',
       type: TuitionItemType.ADDITIONAL_FEE,
       amount: '300000',
+    },
+  });
+
+  // --- Phase 5 Seed Data ---
+  const tuitionFeeType = await prisma.feeType.upsert({
+    where: { code: 'TUITION' },
+    update: {},
+    create: {
+      code: 'TUITION',
+      name: 'Học phí',
+      category: 'TUITION',
+      calculationMethod: 'PER_CREDIT',
+      isMandatory: true,
+    },
+  });
+  const regFeeType = await prisma.feeType.upsert({
+    where: { code: 'REGISTRATION_FEE' },
+    update: {},
+    create: {
+      code: 'REGISTRATION_FEE',
+      name: 'Phí nhập học',
+      category: 'OTHER',
+      calculationMethod: 'FIXED',
+      isMandatory: true,
+    },
+  });
+  const examFeeType = await prisma.feeType.upsert({
+    where: { code: 'EXAM_FEE' },
+    update: {},
+    create: {
+      code: 'EXAM_FEE',
+      name: 'Phí thi lại',
+      category: 'EXAM',
+      calculationMethod: 'FIXED',
+      isMandatory: false,
+    },
+  });
+  // Prevent unused vars lint error
+  console.log('Created fee types:', tuitionFeeType.code, regFeeType.code, examFeeType.code);
+
+  const tuitionRate = await prisma.tuitionRate.findFirst({
+    where: { academicYearId: academicYear.id, feeTypeId: tuitionFeeType.id },
+  });
+  if (!tuitionRate) {
+    await prisma.tuitionRate.create({
+      data: {
+        academicYearId: academicYear.id,
+        feeTypeId: tuitionFeeType.id,
+        amountPerCredit: '650000',
+        effectiveFrom: new Date('2025-08-01'),
+      },
+    });
+  }
+
+  await prisma.scholarship.upsert({
+    where: { code: 'SCH-100' },
+    update: {},
+    create: {
+      code: 'SCH-100',
+      name: 'Học bổng toàn phần',
+      discountType: 'PERCENTAGE',
+      discountValue: '100',
+      effectiveFrom: new Date('2025-08-01'),
+      isActive: true,
     },
   });
 

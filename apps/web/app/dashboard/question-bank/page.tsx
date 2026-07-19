@@ -5,16 +5,21 @@ import { useState } from 'react';
 import { questionService } from '@/lib/services/question.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export default function QuestionBankPage() {
-  const [courseId, setCourseId] = useState('');
   const [search, setSearch] = useState('');
 
   const { data: questionsResponse, isLoading } = useQuery({
-    queryKey: ['questions', courseId, search],
-    queryFn: () => questionService.getQuestions({ courseId, search }),
+    queryKey: ['questions', search],
+    queryFn: () => questionService.getQuestions({ search }),
   });
 
   const questions = questionsResponse?.data || [];
@@ -27,8 +32,8 @@ export default function QuestionBankPage() {
       </div>
 
       <div className="flex items-center gap-4">
-        <Input 
-          placeholder="Tìm kiếm câu hỏi..." 
+        <Input
+          placeholder="Tìm kiếm câu hỏi..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
@@ -49,9 +54,17 @@ export default function QuestionBankPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center">Đang tải...</TableCell></TableRow>
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  Đang tải...
+                </TableCell>
+              </TableRow>
             ) : questions.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center">Không có dữ liệu</TableCell></TableRow>
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
             ) : (
               questions.map((q) => (
                 <TableRow key={q.id}>
@@ -60,7 +73,9 @@ export default function QuestionBankPage() {
                   <TableCell>{q.difficulty}</TableCell>
                   <TableCell>{q.points}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm">Sửa</Button>
+                    <Button variant="ghost" size="sm">
+                      Sửa
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
