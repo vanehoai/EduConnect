@@ -4,7 +4,7 @@ import { UpdatePreferenceDto } from './dto/update-preference.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import type { Request } from 'express';
 
-@Controller('api/notification-preferences/me')
+@Controller('notification-preferences/me')
 @UseGuards(JwtAuthGuard)
 export class NotificationPreferencesController {
   constructor(private readonly preferencesService: NotificationPreferencesService) {}

@@ -26,7 +26,11 @@ export class AcademicRiskSchedulerService {
 
     this.logger.log('Starting scheduled academic risk evaluation...');
 
-    const dbUrl = this.config.get<string>('DATABASE_URL');
+    const dbUrl =
+      this.config.get<string>('TEST_DATABASE_URL') ||
+      this.config.get<string>('DATABASE_URL') ||
+      process.env.TEST_DATABASE_URL ||
+      process.env.DATABASE_URL;
     const client = new Client({ connectionString: dbUrl });
     await client.connect();
 

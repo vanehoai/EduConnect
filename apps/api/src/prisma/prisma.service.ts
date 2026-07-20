@@ -3,6 +3,21 @@ import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  constructor() {
+    const databaseUrl = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+    super(
+      databaseUrl
+        ? {
+            datasources: {
+              db: {
+                url: databaseUrl,
+              },
+            },
+          }
+        : undefined,
+    );
+  }
+
   async onModuleInit(): Promise<void> {
     await this.$connect();
   }
