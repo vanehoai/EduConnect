@@ -54,6 +54,7 @@ export class AuthController {
 
   @Post('refresh')
   @Public()
+  @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rotation access token và refresh token' })
   async refresh(@Req() request: CookieRequest, @Res({ passthrough: true }) response: Response) {

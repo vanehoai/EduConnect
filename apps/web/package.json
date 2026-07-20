@@ -37,7 +37,9 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@next/eslint-plugin-next": "^15.5.20",
+    "@playwright/test": "^1.61.1",
     "@school/eslint-config": "*",
     "@school/tsconfig": "*",
     "@types/node": "^24.5.2",

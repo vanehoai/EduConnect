@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { LoggerModule } from 'nestjs-pino';
+import { randomUUID } from 'node:crypto';
 import { AdminModule } from './admin/admin.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
@@ -41,6 +43,28 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
       isGlobal: true,
       cache: true,
       validate: validateEnvironment,
+    }),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        genReqId: (req) => req.headers['x-request-id'] || randomUUID(),
+        redact: {
+          paths: [
+            'req.headers.authorization',
+            'req.headers.cookie',
+            'req.body.password',
+            'req.body.token',
+          ],
+          censor: '***',
+        },
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? {
+                target: 'pino-pretty',
+                options: { singleLine: true },
+              }
+            : undefined,
+      },
     }),
     PrismaModule,
     AuditModule,

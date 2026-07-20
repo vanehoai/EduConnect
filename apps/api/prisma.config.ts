@@ -7,12 +7,13 @@ const isTestEnvironment = process.env.NODE_ENV === 'test';
 
 const databaseUrl = isTestEnvironment ? process.env.TEST_DATABASE_URL : process.env.DATABASE_URL;
 
-if (!databaseUrl) {
-  throw new Error(
-    isTestEnvironment
-      ? 'TEST_DATABASE_URL is required when NODE_ENV=test'
-      : 'DATABASE_URL is required',
-  );
+if (!databaseUrl && process.env.NODE_ENV !== 'production' && !process.env.CI) {
+  // Allow dummy URL for docker build (prisma generate)
+  // throw new Error(
+  //   isTestEnvironment
+  //     ? 'TEST_DATABASE_URL is required when NODE_ENV=test'
+  //     : 'DATABASE_URL is required',
+  // );
 }
 
 if (isTestEnvironment) {
@@ -30,6 +31,6 @@ export default defineConfig({
     seed: 'tsx prisma/seed.ts',
   },
   datasource: {
-    url: databaseUrl,
+    url: databaseUrl || 'postgresql://dummy:dummy@localhost:5432/dummy',
   },
 });

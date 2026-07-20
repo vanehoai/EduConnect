@@ -139,35 +139,46 @@ export class AttendanceService {
       include: { student: { include: { user: true } } },
     });
 
-    const summary = await Promise.all(
-      enrollments.map(async (e) => {
-        const records = await this.prisma.attendanceRecord.findMany({
-          where: {
-            studentId: e.studentId,
-            attendanceSession: { classSectionId },
-          },
-        });
+    const allRecords = await this.prisma.attendanceRecord.findMany({
+      where: {
+        attendanceSession: { classSectionId },
+        studentId: { in: enrollments.map((e) => e.studentId) },
+      },
+    });
 
-        const totalSessions = sessions.length;
-        const presentCount = records.filter((r) => r.status === 'PRESENT').length;
-        const absentCount = records.filter((r) => r.status === 'ABSENT').length;
-        const lateCount = records.filter((r) => r.status === 'LATE').length;
-        const excusedCount = records.filter((r) => r.status === 'EXCUSED').length;
-        const attendancePercentage = totalSessions > 0 ? (presentCount / totalSessions) * 100 : 0;
-
-        return {
-          studentId: e.studentId,
-          studentCode: e.student.studentCode,
-          firstName: e.student.user.fullName,
-          totalSessions,
-          presentCount,
-          absentCount,
-          lateCount,
-          excusedCount,
-          attendancePercentage,
-        };
-      }),
+    const recordsByStudentId = allRecords.reduce(
+      (acc, record) => {
+        if (!acc[record.studentId]) {
+          acc[record.studentId] = [];
+        }
+        acc[record.studentId]!.push(record);
+        return acc;
+      },
+      {} as Record<string, typeof allRecords>,
     );
+
+    const summary = enrollments.map((e) => {
+      const records = recordsByStudentId[e.studentId] || [];
+
+      const totalSessions = sessions.length;
+      const presentCount = records.filter((r) => r.status === 'PRESENT').length;
+      const absentCount = records.filter((r) => r.status === 'ABSENT').length;
+      const lateCount = records.filter((r) => r.status === 'LATE').length;
+      const excusedCount = records.filter((r) => r.status === 'EXCUSED').length;
+      const attendancePercentage = totalSessions > 0 ? (presentCount / totalSessions) * 100 : 0;
+
+      return {
+        studentId: e.studentId,
+        studentCode: e.student.studentCode,
+        firstName: e.student.user.fullName,
+        totalSessions,
+        presentCount,
+        absentCount,
+        lateCount,
+        excusedCount,
+        attendancePercentage,
+      };
+    });
     return summary;
   }
 

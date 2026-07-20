@@ -22,7 +22,7 @@ import {
   type Lecturer,
   type Question,
   type Student,
-  } from '@prisma/client';
+} from '@prisma/client';
 import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -320,7 +320,8 @@ const permissionMap: Record<string, string[]> = {
     'service-request.create',
     'service-request.cancel',
     'service-request.comment',
-  ],};
+  ],
+};
 
 async function seedAccessControl(): Promise<Map<string, string>> {
   const savedRoles = await Promise.all(
@@ -1067,4 +1068,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

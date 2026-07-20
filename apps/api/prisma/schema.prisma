@@ -630,6 +630,7 @@ model ClassSection {
   @@index([semesterId, status])
   @@index([courseId, semesterId])
   @@index([lecturerId, semesterId])
+  @@index([status])
   @@index([deletedAt])
 }
 

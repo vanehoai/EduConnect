@@ -8,6 +8,8 @@ import {
   Res,
   UploadedFile,
   UseInterceptors,
+  ParseFilePipeBuilder,
+  HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { GradesService } from './grades.service';
@@ -75,7 +77,13 @@ export class GradesController {
   @UseInterceptors(FileInterceptor('file'))
   importCsv(
     @Param('id') classSectionId: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: 'text/csv|csv' })
+        .addMaxSizeValidator({ maxSize: 2 * 1024 * 1024 })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY, fileIsRequired: true }),
+    )
+    file: Express.Multer.File,
     @CurrentUser('id') userId: string,
   ) {
     return this.gradesService.importCsv(classSectionId, file.buffer, userId);

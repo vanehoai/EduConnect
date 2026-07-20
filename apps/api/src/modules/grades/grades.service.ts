@@ -103,6 +103,9 @@ export class GradesService {
     const now = new Date();
 
     await this.prisma.$transaction(async (prisma) => {
+      const notificationsData = [];
+      const updatePromises = [];
+
       for (const enrollment of enrollments) {
         const studentId = enrollment.studentId;
         const sGrades = gradesByStudentId[studentId] || [];
@@ -130,28 +133,33 @@ export class GradesService {
         const passed = finalScoreNum >= 4.0;
         const status = passed ? 'COMPLETED' : 'FAILED';
 
-        await prisma.enrollment.update({
-          where: { id: enrollment.id },
-          data: {
-            finalScore,
-            letterGrade,
-            passed,
-            status,
-            finalGradePublishedAt: now,
-            finalGradePublishedByUserId: userId,
-          },
-        });
+        updatePromises.push(
+          prisma.enrollment.update({
+            where: { id: enrollment.id },
+            data: {
+              finalScore,
+              letterGrade,
+              passed,
+              status,
+              finalGradePublishedAt: now,
+              finalGradePublishedByUserId: userId,
+            },
+          }),
+        );
 
         if (enrollment.student.user) {
-          await prisma.notification.create({
-            data: {
-              userId: enrollment.student.user.id,
-              type: NotificationType.GRADE_PUBLISHED,
-              title: 'Grades Published',
-              content: `Your final grade for class section has been published. Final Score: ${finalScoreNum}, Letter: ${letterGrade}.`,
-            },
+          notificationsData.push({
+            userId: enrollment.student.user.id,
+            type: NotificationType.GRADE_PUBLISHED,
+            title: 'Grades Published',
+            content: `Your final grade for class section has been published. Final Score: ${finalScoreNum}, Letter: ${letterGrade}.`,
           });
         }
+      }
+
+      await Promise.all(updatePromises);
+      if (notificationsData.length > 0) {
+        await prisma.notification.createMany({ data: notificationsData });
       }
 
       await prisma.auditLog.create({
@@ -195,8 +203,8 @@ export class GradesService {
       }));
       const now = new Date();
 
-      for (const ng of newGrades) {
-        await prisma.studentGrade.upsert({
+      const upsertPromises = newGrades.map((ng) =>
+        prisma.studentGrade.upsert({
           where: { gradeComponentId_studentId: { gradeComponentId: ng.componentId, studentId } },
           update: { score: ng.score, gradedByUserId: userId, gradedAt: now },
           create: {
@@ -206,8 +214,9 @@ export class GradesService {
             gradedByUserId: userId,
             gradedAt: now,
           },
-        });
-      }
+        }),
+      );
+      await Promise.all(upsertPromises);
 
       if (enrollment.finalGradePublishedAt) {
         const updatedGrades = await prisma.studentGrade.findMany({
