@@ -100,6 +100,19 @@ export const PERMISSION_CODES = [
   'adjustment.read',
   'adjustment.manage',
   'finance-report.read',
+  'dashboard.admin.read',
+  'dashboard.training.read',
+  'dashboard.finance.read',
+  'dashboard.lecturer.read',
+  'dashboard.student.read',
+  'analytics.academic.read',
+  'analytics.attendance.read',
+  'analytics.examination.read',
+  'analytics.finance.read',
+  'academic-risk.read',
+  'academic-risk.manage',
+  'academic-risk.resolve',
+  'report.export',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
@@ -135,3 +148,5 @@ export interface HealthStatus {
   timestamp: string;
   database: 'up' | 'down';
 }
+
+export * from './phase6.js';

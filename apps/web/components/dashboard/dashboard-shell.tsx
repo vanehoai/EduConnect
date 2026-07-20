@@ -16,6 +16,8 @@ import {
   Banknote,
   Receipt,
   CreditCard,
+  PieChart,
+  AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -41,6 +43,18 @@ const roleLabels: Record<SystemRole, string> = {
 
 const menuItems: MenuItem[] = [
   { label: 'Tổng quan', icon: LayoutDashboard, href: '/dashboard' },
+  {
+    label: 'Thống kê (Analytics)',
+    icon: PieChart,
+    href: '/dashboard/analytics',
+    roles: ['ADMIN', 'TRAINING_STAFF'],
+  },
+  {
+    label: 'Cảnh báo học vụ',
+    icon: AlertTriangle,
+    href: '/dashboard/academic-risks',
+    roles: ['ADMIN', 'TRAINING_STAFF'],
+  },
   {
     label: 'Hồ sơ của tôi',
     icon: Users,
@@ -104,6 +118,18 @@ const menuItems: MenuItem[] = [
     label: 'Lớp học phần (SV)',
     icon: BookOpenCheck,
     href: '/dashboard/student/class-sections',
+    roles: ['STUDENT'],
+  },
+  {
+    label: 'Tổng quan SV',
+    icon: LayoutDashboard,
+    href: '/dashboard/student/overview',
+    roles: ['STUDENT'],
+  },
+  {
+    label: 'Cảnh báo học vụ',
+    icon: AlertTriangle,
+    href: '/dashboard/student/academic-risks',
     roles: ['STUDENT'],
   },
   {

@@ -27,6 +27,9 @@ import { QuestionsModule } from './modules/questions/questions.module';
 import { ExamsModule } from './modules/exams/exams.module';
 import { ExamAttemptsModule } from './modules/exam-attempts/exam-attempts.module';
 import { FinanceModule } from './modules/finance/finance.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { AcademicRisksModule } from './modules/academic-risks/academic-risks.module';
 
 @Module({
   imports: [
@@ -55,7 +58,11 @@ import { FinanceModule } from './modules/finance/finance.module';
     ExamsModule,
     ExamAttemptsModule,
     FinanceModule,
+    DashboardModule,
+    AnalyticsModule,
+    AcademicRisksModule,
   ],
+
   providers: [
     {
       provide: APP_INTERCEPTOR,
