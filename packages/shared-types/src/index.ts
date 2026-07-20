@@ -113,6 +113,25 @@ export const PERMISSION_CODES = [
   'academic-risk.manage',
   'academic-risk.resolve',
   'report.export',
+  'announcement.read',
+  'announcement.create',
+  'announcement.update',
+  'announcement.publish',
+  'announcement.cancel',
+  'announcement.manage-audience',
+  'notification.read',
+  'notification.manage',
+  'notification-preference.manage',
+  'service-request.read',
+  'service-request.create',
+  'service-request.assign',
+  'service-request.update',
+  'service-request.resolve',
+  'service-request.cancel',
+  'service-request.comment',
+  'service-request.internal-comment',
+  'service-request.report',
+  'service-request.export',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
@@ -142,6 +161,11 @@ export interface ApiResponse<T> {
   meta?: PaginationMeta;
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
 export interface HealthStatus {
   status: 'ok' | 'degraded';
   service: string;
@@ -150,3 +174,4 @@ export interface HealthStatus {
 }
 
 export * from './phase6.js';
+export * from './phase7.js';

@@ -22,7 +22,7 @@ import {
   type Lecturer,
   type Question,
   type Student,
-} from '@prisma/client';
+  } from '@prisma/client';
 import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -132,6 +132,26 @@ const permissions = [
   ['academic-risk.manage', 'Quản lý cảnh báo học vụ', 'academic-risk'],
   ['academic-risk.resolve', 'Giải quyết cảnh báo học vụ', 'academic-risk'],
   ['report.export', 'Xuất báo cáo', 'report'],
+  // Phase 7
+  ['announcement.read', 'Xem thông báo', 'announcement'],
+  ['announcement.create', 'Tạo thông báo', 'announcement'],
+  ['announcement.update', 'Cập nhật thông báo', 'announcement'],
+  ['announcement.publish', 'Phát hành thông báo', 'announcement'],
+  ['announcement.cancel', 'Hủy thông báo', 'announcement'],
+  ['announcement.manage-audience', 'Quản lý đối tượng thông báo', 'announcement'],
+  ['notification.read', 'Xem thông báo in-app', 'notification'],
+  ['notification.manage', 'Quản lý thông báo in-app', 'notification'],
+  ['notification-preference.manage', 'Quản lý cài đặt thông báo', 'notification'],
+  ['service-request.read', 'Xem yêu cầu dịch vụ', 'service-request'],
+  ['service-request.create', 'Tạo yêu cầu dịch vụ', 'service-request'],
+  ['service-request.assign', 'Phân công yêu cầu', 'service-request'],
+  ['service-request.update', 'Cập nhật yêu cầu', 'service-request'],
+  ['service-request.resolve', 'Giải quyết yêu cầu', 'service-request'],
+  ['service-request.cancel', 'Hủy yêu cầu', 'service-request'],
+  ['service-request.comment', 'Bình luận yêu cầu', 'service-request'],
+  ['service-request.internal-comment', 'Bình luận nội bộ', 'service-request'],
+  ['service-request.report', 'Báo cáo yêu cầu', 'service-request'],
+  ['service-request.export', 'Xuất dữ liệu yêu cầu', 'service-request'],
 ] as const;
 
 const permissionMap: Record<string, string[]> = {
@@ -202,6 +222,24 @@ const permissionMap: Record<string, string[]> = {
     'academic-risk.manage',
     'academic-risk.resolve',
     'report.export',
+    'announcement.read',
+    'announcement.create',
+    'announcement.update',
+    'announcement.publish',
+    'announcement.cancel',
+    'announcement.manage-audience',
+    'notification.read',
+    'notification.manage',
+    'notification-preference.manage',
+    'service-request.read',
+    'service-request.assign',
+    'service-request.update',
+    'service-request.resolve',
+    'service-request.cancel',
+    'service-request.comment',
+    'service-request.internal-comment',
+    'service-request.report',
+    'service-request.export',
   ],
   FINANCE_STAFF: [
     'student.read',
@@ -275,8 +313,14 @@ const permissionMap: Record<string, string[]> = {
     'attempt.read',
     'result.read',
     'dashboard.student.read',
-  ],
-};
+    'announcement.read',
+    'notification.read',
+    'notification-preference.manage',
+    'service-request.read',
+    'service-request.create',
+    'service-request.cancel',
+    'service-request.comment',
+  ],};
 
 async function seedAccessControl(): Promise<Map<string, string>> {
   const savedRoles = await Promise.all(
@@ -1023,3 +1067,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

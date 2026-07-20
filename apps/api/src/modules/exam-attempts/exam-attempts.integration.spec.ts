@@ -27,7 +27,9 @@ describe('ExamAttemptsService (Integration)', () => {
     await prisma.scholarship.deleteMany();
     await prisma.enrollment.deleteMany();
     await prisma.classSection.deleteMany();
+    await prisma.prerequisite.deleteMany();
     await prisma.course.deleteMany();
+    await prisma.tuitionPolicy.deleteMany();
     await prisma.semester.deleteMany();
     await prisma.academicYear?.deleteMany?.();
     await prisma.student.deleteMany();

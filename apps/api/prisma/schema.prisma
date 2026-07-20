@@ -178,6 +178,14 @@ enum NotificationType {
   PAYMENT_SUCCESS
   PAYMENT_FAILED
   SYSTEM
+  ANNOUNCEMENT_PUBLISHED
+  SERVICE_REQUEST_CREATED
+  SERVICE_REQUEST_ASSIGNED
+  SERVICE_REQUEST_UPDATED
+  SERVICE_REQUEST_RESOLVED
+  SERVICE_REQUEST_CANCELLED
+  SERVICE_REQUEST_SLA_WARNING
+  SERVICE_REQUEST_SLA_BREACHED
 }
 
 enum FeeCategory {
@@ -253,14 +261,14 @@ enum RiskStatus {
 }
 
 model User {
-  id                        String                @id @default(cuid())
-  email                     String                @unique @db.VarChar(255)
-  passwordHash              String                @db.VarChar(255)
-  fullName                  String                @db.VarChar(150)
-  phone                     String?               @db.VarChar(20)
-  avatarUrl                 String?               @db.VarChar(500)
-  status                    UserStatus            @default(ACTIVE)
-  failedLoginAttempts       Int                   @default(0)
+  id                        String                     @id @default(cuid())
+  email                     String                     @unique @db.VarChar(255)
+  passwordHash              String                     @db.VarChar(255)
+  fullName                  String                     @db.VarChar(150)
+  phone                     String?                    @db.VarChar(20)
+  avatarUrl                 String?                    @db.VarChar(500)
+  status                    UserStatus                 @default(ACTIVE)
+  failedLoginAttempts       Int                        @default(0)
   lockedUntil               DateTime?
   lastLoginAt               DateTime?
   passwordChangedAt         DateTime?
@@ -270,26 +278,37 @@ model User {
   auditLogs                 AuditLog[]
   lecturer                  Lecturer?
   student                   Student?
-  createdQuestions          Question[]            @relation("QuestionCreator")
-  createdExams              Exam[]                @relation("ExamCreator")
-  gradedStudentGrades       StudentGrade[]        @relation("GradeGrader")
-  publishedEnrollmentGrades Enrollment[]          @relation("GradePublisher")
-  markedAttendanceRecords   AttendanceRecord[]    @relation("AttendanceMarker")
+  createdQuestions          Question[]                 @relation("QuestionCreator")
+  createdExams              Exam[]                     @relation("ExamCreator")
+  gradedStudentGrades       StudentGrade[]             @relation("GradeGrader")
+  publishedEnrollmentGrades Enrollment[]               @relation("GradePublisher")
+  markedAttendanceRecords   AttendanceRecord[]         @relation("AttendanceMarker")
   notifications             Notification[]
-  issuedInvoices            Invoice[]             @relation("InvoiceIssuer")
-  cancelledInvoices         Invoice[]             @relation("InvoiceCanceller")
-  receivedPayments          PaymentTransaction[]  @relation("PaymentReceiver")
-  verifiedPayments          PaymentTransaction[]  @relation("PaymentVerifier")
-  cancelledPayments         PaymentTransaction[]  @relation("PaymentCanceller")
-  issuedReceipts            Receipt[]             @relation("ReceiptIssuer")
-  approvedScholarships      StudentScholarship[]  @relation("ScholarshipApprover")
-  createdAdjustments        FinancialAdjustment[] @relation("AdjustmentCreator")
-  acknowledgedRisks         AcademicRiskAlert[]   @relation("RiskAcknowledgedBy")
-  resolvedRisks             AcademicRiskAlert[]   @relation("RiskResolvedBy")
-  dismissedRisks            AcademicRiskAlert[]   @relation("RiskDismissedBy")
-  createdAt                 DateTime              @default(now())
-  updatedAt                 DateTime              @updatedAt
+  issuedInvoices            Invoice[]                  @relation("InvoiceIssuer")
+  cancelledInvoices         Invoice[]                  @relation("InvoiceCanceller")
+  receivedPayments          PaymentTransaction[]       @relation("PaymentReceiver")
+  verifiedPayments          PaymentTransaction[]       @relation("PaymentVerifier")
+  cancelledPayments         PaymentTransaction[]       @relation("PaymentCanceller")
+  issuedReceipts            Receipt[]                  @relation("ReceiptIssuer")
+  approvedScholarships      StudentScholarship[]       @relation("ScholarshipApprover")
+  createdAdjustments        FinancialAdjustment[]      @relation("AdjustmentCreator")
+  acknowledgedRisks         AcademicRiskAlert[]        @relation("RiskAcknowledgedBy")
+  resolvedRisks             AcademicRiskAlert[]        @relation("RiskResolvedBy")
+  dismissedRisks            AcademicRiskAlert[]        @relation("RiskDismissedBy")
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
   deletedAt                 DateTime?
+  publishedAnnouncements    Announcement[]             @relation("AnnouncementPublishedBy")
+  cancelledAnnouncements    Announcement[]             @relation("AnnouncementCancelledBy")
+  createdAnnouncements      Announcement[]             @relation("AnnouncementCreatedBy")
+  readAnnouncements         AnnouncementReadReceipt[]
+  notificationPreferences   NotificationPreference[]
+  assignedServiceRequests   ServiceRequest[]           @relation("RequestAssignedTo")
+  assignedByServiceRequests ServiceRequest[]           @relation("RequestAssignedBy")
+  resolvedServiceRequests   ServiceRequest[]           @relation("RequestResolvedBy")
+  cancelledServiceRequests  ServiceRequest[]           @relation("RequestCancelledBy")
+  serviceRequestComments    ServiceRequestComment[]
+  serviceRequestAttachments ServiceRequestAttachment[]
 
   @@index([fullName])
   @@index([status])
@@ -297,15 +316,17 @@ model User {
 }
 
 model Role {
-  id          String           @id @default(cuid())
-  code        String           @unique @db.VarChar(50)
-  name        String           @db.VarChar(100)
-  description String?          @db.VarChar(500)
-  isSystem    Boolean          @default(false)
-  users       UserRole[]
-  permissions RolePermission[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id                       String                   @id @default(cuid())
+  code                     String                   @unique @db.VarChar(50)
+  name                     String                   @db.VarChar(100)
+  description              String?                  @db.VarChar(500)
+  isSystem                 Boolean                  @default(false)
+  users                    UserRole[]
+  permissions              RolePermission[]
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  announcementAudiences    AnnouncementAudience[]
+  defaultRequestCategories ServiceRequestCategory[]
 
   @@index([name])
 }
@@ -405,20 +426,22 @@ model AuditLog {
 }
 
 model Department {
-  id             String        @id @default(cuid())
-  code           String        @unique @db.VarChar(20)
-  name           String        @unique @db.VarChar(150)
-  description    String?       @db.Text
-  headLecturerId String?       @unique
-  status         RecordStatus  @default(ACTIVE)
-  headLecturer   Lecturer?     @relation("DepartmentHead", fields: [headLecturerId], references: [id], onDelete: SetNull)
-  lecturers      Lecturer[]    @relation("DepartmentLecturers")
-  students       Student[]
-  courses        Course[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  deletedAt      DateTime?
-  tuitionRates   TuitionRate[]
+  id                    String                   @id @default(cuid())
+  code                  String                   @unique @db.VarChar(20)
+  name                  String                   @unique @db.VarChar(150)
+  description           String?                  @db.Text
+  headLecturerId        String?                  @unique
+  status                RecordStatus             @default(ACTIVE)
+  headLecturer          Lecturer?                @relation("DepartmentHead", fields: [headLecturerId], references: [id], onDelete: SetNull)
+  lecturers             Lecturer[]               @relation("DepartmentLecturers")
+  students              Student[]
+  courses               Course[]
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  deletedAt             DateTime?
+  tuitionRates          TuitionRate[]
+  announcementAudiences AnnouncementAudience[]
+  requestCategories     ServiceRequestCategory[]
 
   @@index([name])
   @@index([status])
@@ -426,26 +449,27 @@ model Department {
 }
 
 model Lecturer {
-  id                 String              @id @default(cuid())
-  lecturerCode       String              @unique @db.VarChar(30)
-  userId             String              @unique
-  departmentId       String
-  fullName           String              @db.VarChar(150)
-  email              String              @unique @db.VarChar(255)
-  phone              String?             @db.VarChar(20)
-  dateOfBirth        DateTime?           @db.Date
-  gender             Gender?
-  academicRank       String?             @db.VarChar(100)
-  specialization     String?             @db.VarChar(200)
-  status             LecturerStatus      @default(ACTIVE)
-  user               User                @relation(fields: [userId], references: [id], onDelete: Restrict)
-  department         Department          @relation("DepartmentLecturers", fields: [departmentId], references: [id], onDelete: Restrict)
-  headedDepartment   Department?         @relation("DepartmentHead")
-  classSections      ClassSection[]
-  attendanceSessions AttendanceSession[]
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  deletedAt          DateTime?
+  id                    String                 @id @default(cuid())
+  lecturerCode          String                 @unique @db.VarChar(30)
+  userId                String                 @unique
+  departmentId          String
+  fullName              String                 @db.VarChar(150)
+  email                 String                 @unique @db.VarChar(255)
+  phone                 String?                @db.VarChar(20)
+  dateOfBirth           DateTime?              @db.Date
+  gender                Gender?
+  academicRank          String?                @db.VarChar(100)
+  specialization        String?                @db.VarChar(200)
+  status                LecturerStatus         @default(ACTIVE)
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  department            Department             @relation("DepartmentLecturers", fields: [departmentId], references: [id], onDelete: Restrict)
+  headedDepartment      Department?            @relation("DepartmentHead")
+  classSections         ClassSection[]
+  attendanceSessions    AttendanceSession[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  deletedAt             DateTime?
+  announcementAudiences AnnouncementAudience[]
 
   @@index([fullName])
   @@index([departmentId, status])
@@ -453,24 +477,24 @@ model Lecturer {
 }
 
 model Student {
-  id                      String                @id @default(cuid())
-  studentCode             String                @unique @db.VarChar(30)
-  userId                  String                @unique
+  id                      String                 @id @default(cuid())
+  studentCode             String                 @unique @db.VarChar(30)
+  userId                  String                 @unique
   departmentId            String
   admissionAcademicYearId String?
-  fullName                String                @db.VarChar(150)
-  email                   String                @unique @db.VarChar(255)
-  phone                   String?               @db.VarChar(20)
-  dateOfBirth             DateTime?             @db.Date
+  fullName                String                 @db.VarChar(150)
+  email                   String                 @unique @db.VarChar(255)
+  phone                   String?                @db.VarChar(20)
+  dateOfBirth             DateTime?              @db.Date
   gender                  Gender?
-  address                 String?               @db.VarChar(500)
-  cohortClass             String                @db.VarChar(50)
-  cohort                  String                @db.VarChar(20)
-  enrollmentDate          DateTime              @db.Date
-  academicStatus          AcademicStatus        @default(STUDYING)
-  user                    User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
-  department              Department            @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  admissionAcademicYear   AcademicYear?         @relation(fields: [admissionAcademicYearId], references: [id], onDelete: SetNull)
+  address                 String?                @db.VarChar(500)
+  cohortClass             String                 @db.VarChar(50)
+  cohort                  String                 @db.VarChar(20)
+  enrollmentDate          DateTime               @db.Date
+  academicStatus          AcademicStatus         @default(STUDYING)
+  user                    User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  department              Department             @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  admissionAcademicYear   AcademicYear?          @relation(fields: [admissionAcademicYearId], references: [id], onDelete: SetNull)
   enrollments             Enrollment[]
   attendanceRecords       AttendanceRecord[]
   grades                  StudentGrade[]
@@ -480,10 +504,12 @@ model Student {
   paymentTransactions     PaymentTransaction[]
   studentScholarships     StudentScholarship[]
   financialAdjustments    FinancialAdjustment[]
-  createdAt               DateTime              @default(now())
-  updatedAt               DateTime              @updatedAt
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
   deletedAt               DateTime?
   academicRiskAlerts      AcademicRiskAlert[]
+  announcementAudiences   AnnouncementAudience[]
+  serviceRequests         ServiceRequest[]
 
   @@index([fullName])
   @@index([departmentId, cohortClass])
@@ -578,26 +604,27 @@ model Prerequisite {
 }
 
 model ClassSection {
-  id                 String              @id @default(cuid())
-  sectionCode        String              @unique @db.VarChar(40)
-  courseId           String
-  semesterId         String
-  lecturerId         String
-  room               String?             @db.VarChar(50)
-  maxCapacity        Int
-  enrolledCount      Int                 @default(0)
-  status             ClassSectionStatus  @default(DRAFT)
-  course             Course              @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  semester           Semester            @relation(fields: [semesterId], references: [id], onDelete: Restrict)
-  lecturer           Lecturer            @relation(fields: [lecturerId], references: [id], onDelete: Restrict)
-  schedules          Schedule[]
-  enrollments        Enrollment[]
-  attendanceSessions AttendanceSession[]
-  gradeComponents    GradeComponent[]
-  exams              Exam[]
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  deletedAt          DateTime?
+  id                    String                 @id @default(cuid())
+  sectionCode           String                 @unique @db.VarChar(40)
+  courseId              String
+  semesterId            String
+  lecturerId            String
+  room                  String?                @db.VarChar(50)
+  maxCapacity           Int
+  enrolledCount         Int                    @default(0)
+  status                ClassSectionStatus     @default(DRAFT)
+  course                Course                 @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  semester              Semester               @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+  lecturer              Lecturer               @relation(fields: [lecturerId], references: [id], onDelete: Restrict)
+  schedules             Schedule[]
+  enrollments           Enrollment[]
+  attendanceSessions    AttendanceSession[]
+  gradeComponents       GradeComponent[]
+  exams                 Exam[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  deletedAt             DateTime?
+  announcementAudiences AnnouncementAudience[]
 
   @@unique([courseId, semesterId, sectionCode])
   @@index([semesterId, status])
@@ -1276,4 +1303,247 @@ model AcademicRiskAlert {
   @@index([severity])
   @@index([detectedAt])
   @@index([evaluationPeriod])
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  EXPIRED
+  CANCELLED
+}
+
+enum AnnouncementPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum AnnouncementCategory {
+  GENERAL
+  ACADEMIC
+  EXAM
+  ATTENDANCE
+  FINANCE
+  SCHOLARSHIP
+  SYSTEM
+  EVENT
+  OTHER
+}
+
+enum AnnouncementAudienceType {
+  ALL_USERS
+  ROLE
+  DEPARTMENT
+  CLASS_SECTION
+  STUDENT
+  LECTURER
+}
+
+enum ServiceRequestStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  WAITING_FOR_STUDENT
+  RESOLVED
+  CLOSED
+  CANCELLED
+  REOPENED
+}
+
+enum ServiceRequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum CommentVisibility {
+  PUBLIC
+  INTERNAL
+}
+
+model Announcement {
+  id                String               @id @default(cuid())
+  title             String               @db.VarChar(300)
+  summary           String?              @db.VarChar(1000)
+  content           String               @db.Text
+  category          AnnouncementCategory @default(GENERAL)
+  priority          AnnouncementPriority @default(NORMAL)
+  status            AnnouncementStatus   @default(DRAFT)
+  publishAt         DateTime?
+  expiresAt         DateTime?
+  publishedAt       DateTime?
+  publishedByUserId String?
+  cancelledAt       DateTime?
+  cancelledByUserId String?
+  cancelReason      String?              @db.Text
+  createdByUserId   String
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  publishedBy  User?                     @relation("AnnouncementPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  cancelledBy  User?                     @relation("AnnouncementCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+  createdBy    User                      @relation("AnnouncementCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  audiences    AnnouncementAudience[]
+  readReceipts AnnouncementReadReceipt[]
+
+  @@index([status])
+  @@index([publishAt])
+  @@index([expiresAt])
+  @@index([category])
+  @@index([priority])
+}
+
+model AnnouncementAudience {
+  id             String                   @id @default(cuid())
+  announcementId String
+  audienceType   AnnouncementAudienceType
+  roleId         String?
+  departmentId   String?
+  classSectionId String?
+  studentId      String?
+  lecturerId     String?
+  createdAt      DateTime                 @default(now())
+
+  announcement Announcement  @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  role         Role?         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  department   Department?   @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  classSection ClassSection? @relation(fields: [classSectionId], references: [id], onDelete: Cascade)
+  student      Student?      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lecturer     Lecturer?     @relation(fields: [lecturerId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, audienceType, roleId, departmentId, classSectionId, studentId, lecturerId])
+  @@index([announcementId])
+  @@index([audienceType])
+  @@index([roleId])
+  @@index([departmentId])
+  @@index([classSectionId])
+  @@index([studentId])
+  @@index([lecturerId])
+}
+
+model AnnouncementReadReceipt {
+  announcementId String
+  userId         String
+  readAt         DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+}
+
+model NotificationPreference {
+  id           String   @id @default(cuid())
+  userId       String
+  category     String   @db.VarChar(50)
+  inAppEnabled Boolean  @default(true)
+  emailEnabled Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+}
+
+model ServiceRequestCategory {
+  id                    String                 @id @default(cuid())
+  code                  String                 @unique @db.VarChar(50)
+  name                  String                 @db.VarChar(200)
+  description           String?                @db.Text
+  owningDepartmentId    String?
+  defaultPriority       ServiceRequestPriority @default(NORMAL)
+  defaultAssigneeRoleId String?
+  slaHours              Int?
+  requiresAttachment    Boolean                @default(false)
+  isActive              Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  owningDepartment    Department?      @relation(fields: [owningDepartmentId], references: [id], onDelete: SetNull)
+  defaultAssigneeRole Role?            @relation(fields: [defaultAssigneeRoleId], references: [id], onDelete: SetNull)
+  requests            ServiceRequest[]
+}
+
+model ServiceRequest {
+  id                String                 @id @default(cuid())
+  requestNumber     String                 @unique @db.VarChar(50)
+  studentId         String
+  categoryId        String
+  subject           String                 @db.VarChar(300)
+  description       String                 @db.Text
+  priority          ServiceRequestPriority @default(NORMAL)
+  status            ServiceRequestStatus   @default(OPEN)
+  assignedToUserId  String?
+  assignedByUserId  String?
+  assignedAt        DateTime?
+  dueAt             DateTime?
+  firstResponseAt   DateTime?
+  resolvedAt        DateTime?
+  resolvedByUserId  String?
+  resolutionSummary String?                @db.Text
+  cancelledAt       DateTime?
+  cancelledByUserId String?
+  cancelReason      String?                @db.Text
+  closedAt          DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  student     Student                    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  category    ServiceRequestCategory     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  assignedTo  User?                      @relation("RequestAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  assignedBy  User?                      @relation("RequestAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  resolvedBy  User?                      @relation("RequestResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  cancelledBy User?                      @relation("RequestCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+  comments    ServiceRequestComment[]
+  attachments ServiceRequestAttachment[]
+
+  @@index([studentId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([priority])
+  @@index([assignedToUserId])
+  @@index([dueAt])
+  @@index([createdAt])
+}
+
+model ServiceRequestComment {
+  id               String            @id @default(cuid())
+  serviceRequestId String
+  authorUserId     String
+  content          String            @db.Text
+  visibility       CommentVisibility @default(PUBLIC)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+
+  serviceRequest ServiceRequest             @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  author         User                       @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+  attachments    ServiceRequestAttachment[]
+
+  @@index([serviceRequestId])
+  @@index([visibility])
+  @@index([createdAt])
+}
+
+model ServiceRequestAttachment {
+  id               String    @id @default(cuid())
+  serviceRequestId String
+  commentId        String?
+  uploadedByUserId String
+  originalName     String    @db.VarChar(500)
+  storageKey       String    @db.VarChar(500)
+  mimeType         String    @db.VarChar(100)
+  sizeBytes        Int
+  checksum         String?   @db.VarChar(255)
+  createdAt        DateTime  @default(now())
+  deletedAt        DateTime?
+
+  serviceRequest ServiceRequest         @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  comment        ServiceRequestComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploadedBy     User                   @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict)
 }

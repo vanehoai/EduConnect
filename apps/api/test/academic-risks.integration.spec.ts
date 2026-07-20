@@ -35,10 +35,10 @@ describe('Academic Risks (Integration)', () => {
     await prisma.semester.delete({ where: { id: 'sem-test' } }).catch(() => {});
     await prisma.semester.delete({ where: { id: 'sem-test-2' } }).catch(() => {});
     await prisma.academicRiskRule.deleteMany();
-    await prisma.academicYear.delete({ where: { id: 'ay-test' } }).catch(() => {});
-
-    const academicYear = await prisma.academicYear.create({
-      data: {
+    const academicYear = await prisma.academicYear.upsert({
+      where: { id: 'ay-test' },
+      update: { code: '2026-2027', name: '2026-2027', startDate: new Date('2026-01-01'), endDate: new Date('2026-12-31') },
+      create: {
         id: 'ay-test',
         code: '2026-2027',
         name: '2026-2027',
@@ -47,8 +47,20 @@ describe('Academic Risks (Integration)', () => {
       },
     });
 
-    await prisma.semester.create({
-      data: {
+    await prisma.semester.upsert({
+      where: { id: 'sem-test' },
+      update: {
+        code: '2026-SEM-TEST',
+        name: 'Test Sem',
+        startDate: new Date('2026-01-10'),
+        endDate: new Date('2026-05-10'),
+        status: 'IN_PROGRESS',
+        term: SemesterTerm.FIRST,
+        registrationStartDate: new Date('2025-12-01'),
+        registrationEndDate: new Date('2025-12-31'),
+        academicYearId: academicYear.id,
+      },
+      create: {
         id: 'sem-test',
         code: '2026-SEM-TEST',
         name: 'Test Sem',
@@ -79,8 +91,21 @@ describe('Academic Risks (Integration)', () => {
       },
     });
 
-    await prisma.student.create({
-      data: {
+    await prisma.student.upsert({
+      where: { id: 'student-test' },
+      update: {
+        studentCode: 'ST-001',
+        fullName: 'Test Student',
+        email: 'test@example.com',
+        academicStatus: AcademicStatus.STUDYING,
+        userId: 'user-test',
+        departmentId: 'dept-test',
+        cohortClass: '2026-IT',
+        cohort: '2026',
+        enrollmentDate: new Date('2026-09-01'),
+        admissionAcademicYearId: academicYear.id,
+      },
+      create: {
         id: 'student-test',
         studentCode: 'ST-001',
         fullName: 'Test Student',
@@ -249,12 +274,12 @@ describe('Academic Risks (Integration)', () => {
           id: 'sem-test-2',
           code: '2026-SEM-TEST-2',
           name: 'Test Sem 2',
-          startDate: new Date('2026-06-01'),
-          endDate: new Date('2026-10-01'),
+          startDate: new Date('2026-06-10'),
+          endDate: new Date('2026-10-10'),
           status: 'IN_PROGRESS',
           term: SemesterTerm.SECOND,
           registrationStartDate: new Date('2026-05-01'),
-          registrationEndDate: new Date('2026-05-30'),
+          registrationEndDate: new Date('2026-05-31'),
           academicYearId: 'ay-test',
         },
       });
@@ -263,9 +288,9 @@ describe('Academic Risks (Integration)', () => {
         data: {
           id: 'class-test-2',
           sectionCode: 'CS-002',
-          courseId: 'course-test',
-          semesterId: 'sem-test-2',
-          lecturerId: 'lecturer-test',
+          course: { connect: { id: 'course-test' } },
+          semester: { connect: { id: 'sem-test-2' } },
+          lecturer: { connect: { id: 'lecturer-test' } },
           maxCapacity: 40,
         },
       });
