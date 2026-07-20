@@ -1,0 +1,86 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Lý do triển khai (Release Note / Hotfix)'
+        required: true
+        default: 'Production Launch v1.0.0'
+
+jobs:
+  production-deploy:
+    name: Production Deployment & Verification
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Code Quality - Linting
+        run: npm run lint
+
+      - name: Code Quality - Typecheck
+        run: npm run typecheck
+
+      - name: Run Tests
+        run: npm run test
+
+      - name: Build Packages
+        run: npm run build
+
+      - name: Validate Prisma Schema
+        run: npx prisma validate --schema=apps/api/prisma/schema.prisma
+
+      - name: Set Image Tag Variables
+        id: vars
+        run: |
+          echo "VERSION_TAG=v1.0.0" >> $GITHUB_OUTPUT
+          echo "SHA_TAG=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Build Docker Images
+        run: |
+          docker build -t educonnect-api:${{ steps.vars.outputs.VERSION_TAG }} -t educonnect-api:${{ steps.vars.outputs.SHA_TAG }} -f apps/api/Dockerfile .
+          docker build -t educonnect-web:${{ steps.vars.outputs.VERSION_TAG }} -t educonnect-web:${{ steps.vars.outputs.SHA_TAG }} -f apps/web/Dockerfile .
+
+      - name: Database Pre-Deploy Safety & Backup
+        run: |
+          echo "Executing pre-deploy database backup & checksum verification..."
+          pwsh ./scripts/pre-deploy-check.ps1
+
+      - name: Apply Database Migrations (Prisma Migrate Deploy)
+        run: |
+          echo "Applying migrations safely..."
+          pwsh ./scripts/deploy-db.ps1
+
+      - name: Post-Migration Check
+        run: |
+          pwsh ./scripts/post-deploy-check.ps1
+
+      - name: Deploy Production Containers
+        run: |
+          docker compose -f docker-compose.production.yml up -d
+
+      - name: Wait for Readiness & Health
+        run: |
+          echo "Waiting for API readiness..."
+          sleep 10
+          node scripts/smoke-test-production.js
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "Triển khai thất bại! Đang kích hoạt quy trình Rollback tự động..."
+          pwsh ./scripts/rollback-db.ps1
+          docker compose -f docker-compose.production.yml down
+          exit 1

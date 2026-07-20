@@ -5,7 +5,7 @@ import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { Permissions } from '../../auth/decorators/permissions.decorator';
 import type { Request } from 'express';
 
-@Controller('api/students/me/announcements')
+@Controller('students/me/announcements')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class StudentAnnouncementsController {
   constructor(private readonly studentAnnouncementsService: StudentAnnouncementsService) {}

@@ -1,38 +1,27 @@
-# Security Policies & Hardening
+# Security Policies & Hardening (v1.0.0)
 
 ## Overview
 
-Dự án EduConnect đã được áp dụng (hardened) các chính sách bảo mật cho Production (Phase 8), tập trung vào Application Security, Network Security, và Operations Security.
+Dự án EduConnect đã áp dụng toàn bộ các chính sách bảo mật cho Production (Phases 8-11), bao gồm Application Security, Infrastructure Security và Operations Security.
 
-## 1. Authentication & Authorization
+## 1. Authentication & Authorization Controls
 
-- **JWT (JSON Web Token)**: Hệ thống sử dụng cặp Access Token (ngắn hạn - 15m) và Refresh Token (dài hạn - 7d).
-- **Secret Length**: `JWT_ACCESS_SECRET` và `JWT_REFRESH_SECRET` bị **bắt buộc** phải có tối thiểu 32 ký tự. Ứng dụng sẽ tự động từ chối khởi động (Crash-loop) nếu phát hiện secret quá ngắn hoặc dùng giá trị mặc định trong môi trường production.
-- **RBAC**: API được bảo vệ bằng guards `@Roles()` và `@Permissions()`. User (Sinh viên, Giảng viên) không có quyền can thiệp dữ liệu lẫn nhau.
+- **JWT Secrets**: `JWT_ACCESS_SECRET` và `JWT_REFRESH_SECRET` bắt buộc tối thiểu 32 ký tự, cấm từ khóa 'development'.
+- **Swagger Documentation**: Swagger `/api/docs` bị **tắt hoàn toàn** trong môi trường Production (`NODE_ENV === 'production'`).
+- **Cookie Security**: HTTP-only, SameSite=Lax (hoặc Strict), Secure flag kích hoạt khi chạy HTTPS.
+- **RBAC & Ownership**: Kiểm tra quyền chi tiết qua `@Permissions()` và kiểm tra chủ sở hữu dữ liệu trực tiếp trong tầng Service.
 
-## 2. API Protection
+## 2. API Protection & Headers
 
-- **CORS**: Được quản lý qua `CORS_ORIGIN`. Tuyệt đối không cho phép dùng wildcard `*` với credentials.
-- **Helmet**: Helmet được cấu hình với các Header nghiêm ngặt:
-  - `Content-Security-Policy`: Mặc định ngăn chặn các script/style thực thi ngoài luồng.
-  - `Strict-Transport-Security` (HSTS): Ngăn chặn MITM.
-  - X-Frame-Options, X-Content-Type-Options.
-- **Rate Limiting**: Toàn bộ hệ thống áp dụng Throttle (`@nestjs/throttler`), với giới hạn đặc biệt khắt khe cho endpoint login/refresh (Mặc định: 5 requests / phút).
-- **Validation**: `ValidationPipe` sử dụng `whitelist: true` và `forbidNonWhitelisted: true`, đảm bảo API sẽ chặn mọi request chứa trường dữ liệu không nằm trong DTO định nghĩa.
+- **CORS**: Chỉ cho phép danh sách trắng trong `CORS_ORIGIN`. Từ chối tất cả origin lạ.
+- **Security Headers (Helmet)**: HSTS (`maxAge: 31536000`), `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`.
+- **Content Security Policy (CSP)**: `connect-src` kiểm soát chặt chẽ origin được phép gọi.
+- **Rate Limiting**: Throttler bảo vệ API login (mặc định 5 req/phút).
+- **Error Stack Trace Concealment**: `AllExceptionsFilter` che giấu toàn bộ stack trace và chi tiết lỗi nội bộ khi gặp lỗi 5xx trên Production.
 
-## 3. Data Protection
+## 3. Operations & Container Security
 
-- Các trường nhạy cảm như Mật khẩu, Token, Key thanh toán đều được **Redact (che giấu)** tự động trong Logs thông qua `pino-http`.
-- AuditLogs không lưu trữ JWT token hay Mật khẩu trong bất kỳ hoàn cảnh nào.
-- Dữ liệu rác/độc hại được chống thông qua Zod ở Frontend và Class Validator ở Backend.
-- **CSV Formula Injection**: Các trường xuất CSV được escape bằng ký tự `'` để tránh chèn mã thực thi Excel.
-
-## 4. Frontend Next.js Security
-
-- **Security Headers**: Áp dụng tại Next Config để bổ trợ cho backend.
-- **Error Boundaries**: Ứng dụng Next.js xử lý lỗi bằng `app/error.tsx` tùy chỉnh, hoàn toàn che giấu stack trace và internal state của hệ thống khi ở trên production.
-
-## 5. Dependency Vulnerabilities
-
-- Mọi bản cập nhật dependency được giám sát tự động bằng `npm audit`.
-- **Note**: Hiện tại Next.js `canary` có thể bao gồm dependency `postcss` (vulnerability ở mức độ moderate liên quan đến XSS style tag). Lỗi này xuất phát từ bên thứ ba và đã được mitigate nhờ CSP headers và hệ thống render chuẩn của React/NextJS. Việc cố gắng `npm audit fix --force` bị cấm để tránh gây hỏng (breaking change) đến hệ thống build của Next.js.
+- **Non-Root Containers**: Web và API containers thực thi bằng tài khoản không có quyền root (`user: node`).
+- **Log Redaction**: Pino HTTP tự động che giấu mật khẩu, token và thông tin nhạy cảm trong logs.
+- **Zero Secret In Image**: Image Docker được build không chứa file `.env` hoặc secrets hard-code.
+- **Vulnerability Governance**: Không sử dụng `npm audit fix --force` gây breaking changes. 0 critical/high vulnerabilities.

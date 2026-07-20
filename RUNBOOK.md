@@ -1,43 +1,36 @@
-# Sổ Tay Vận Hành (Runbook) - EduConnect
+# Sổ Tay Vận Hành (Runbook) - EduConnect v1.0.0
 
-## 1. Cấu hình Cảnh báo (Alerts)
+## 1. Cấu hình Cảnh báo & Giám sát (Monitoring & Alerts)
 
-- **CPU/RAM Usage**: > 85% trong 5 phút.
-- **API Error Rate (5xx)**: > 2% tổng request.
-- **Database CPU/Connections**: Đạt ngưỡng giới hạn cấu hình.
-- Công cụ: Prometheus, Grafana, Datadog hoặc AWS CloudWatch.
-- Kênh nhận cảnh báo: Slack, Email, SMS (PagerDuty).
+| Alert Metric               | Điều kiện Cảnh báo                         | Mức độ | Hành động                                                          |
+| :------------------------- | :----------------------------------------- | :----: | :----------------------------------------------------------------- |
+| **API Unavailable**        | `GET /api/health/live` không trả về 200    | SEV-1  | Kiểm tra container API, restart service                            |
+| **Readiness Failed**       | `GET /api/health/ready` trả về 503         | SEV-1  | Kiểm tra kết nối Postgres & Redis                                  |
+| **HTTP 5xx Spikes**        | Tỷ lệ 5xx > 1% trong 5 phút                | SEV-1  | Tra cứu log JSON qua Correlation ID (`x-request-id`)               |
+| **High Response Time**     | Latency p95 > 1.0s trên GET APIs           | SEV-2  | Phân tích query slow, kiểm tra Redis cache                         |
+| **Database Failure**       | Kết nối DB bị ngắt hoặc Connection Limit   | SEV-1  | Kiểm tra CPU/Memory container Postgres, kill slow query            |
+| **Redis Failure**          | Kết nối Redis bị ngắt                      | SEV-2  | Khởi động lại Redis, kiểm tra Memory limit                         |
+| **High Disk Usage**        | Dung lượng đĩa / volume > 85%              | SEV-2  | Dọn dẹp log cũ (`docker system prune`), lưu trữ backup             |
+| **High CPU/Memory**        | Container CPU > 90% hoặc RAM > 85%         | SEV-2  | Tăng resource limits trong compose file                            |
+| **Backup Failure**         | Cron backup hoặc SHA256 verification lỗi   | SEV-2  | Chạy script backup thủ công `pwsh ./scripts/pre-deploy-check.ps1`  |
+| **Scheduler Failure**      | Advisory lock acquisition / Cron job fail  | SEV-3  | Kiểm tra log `announcement-scheduler` và `academic-risk-scheduler` |
+| **Login Brute Force**      | Throttler kích hoạt HTTP 429 trên `/login` | SEV-3  | Theo dõi IP nguồn, kiểm tra rate limit config                      |
+| **Payment Webhook Errors** | Webhook verification / Idempotency fail    | SEV-2  | Kiểm tra `MOCK_PAYMENT_WEBHOOK_SECRET` và audit log                |
 
-## 2. Các Kịch Bản Xử Lý Sự Cố (Incident Response)
+---
 
-### 2.1. API Unavailable (502 Bad Gateway / 503 Service Unavailable)
+## 2. Kịch bản Xử lý Sự cố & Đổi Secret
 
-- **Nguyên nhân**: Node.js/API container bị crash, cấu hình Nginx/Load Balancer sai.
-- **Khắc phục**:
-  1. Check logs của API container: `docker logs <container_id>` hoặc qua công cụ log tập trung.
-  2. Khởi động lại dịch vụ: `docker restart api_service` hoặc scale lại pods trên K8s.
-  3. Kiểm tra lại health check endpoint (`/health`).
+### 2.1 Đổi JWT Secrets / Database Credentials
 
-### 2.2. Database Fail (PostgreSQL Down)
+1. Cập nhật secret mới trong `.env.production` (hoặc Secret Manager).
+2. Tái khởi tạo container API:
+   ```bash
+   docker compose -f docker-compose.production.yml up -d --force-recreate api
+   ```
+3. Mọi access token cũ sẽ tự động bị từ chối, yêu cầu người dùng đăng nhập lại.
 
-- **Nguyên nhân**: Quá tải connection, hết ổ cứng, lỗi phần cứng máy chủ DB.
-- **Khắc phục**:
-  1. Kiểm tra tài nguyên DB server (Disk space, CPU).
-  2. Kill các query treo (long-running queries) gây deadlocks.
-  3. Failover sang DB Replica nếu đang dùng Master-Slave hoặc AWS RDS Multi-AZ.
+### 2.2 Xử lý Tài khoản Bị Khóa / Tấn công Brute-Force
 
-### 2.3. Redis Fail (Cache/Queue Down)
-
-- **Nguyên nhân**: Hết RAM, Redis server crash.
-- **Khắc phục**:
-  1. Khởi động lại Redis service.
-  2. Nếu dùng cho cache: Hệ thống nên có cơ chế fallback đọc từ DB khi cache miss hoặc Redis down (đảm bảo không sập dây chuyền).
-  3. Nếu dùng cho queue: Các job bị kẹt sẽ được retry khi Redis online lại.
-
-### 2.4. Backup Thất Bại (Daily Backup failed)
-
-- **Nguyên nhân**: Hết dung lượng ổ lưu trữ backup (S3/Disk), script cronjob lỗi.
-- **Khắc phục**:
-  1. Kiểm tra log của backup cronjob.
-  2. Dọn dẹp các file backup quá cũ (Retention policy).
-  3. Chạy backup thủ công để đảm bảo an toàn ngay lập tức.
+- Kiểm tra Throttler log và AuditLog trong DB.
+- Đặt lại mật khẩu tài khoản bị nghi ngờ bị xâm nhập qua DB hoặc API quản trị.

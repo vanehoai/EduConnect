@@ -1,34 +1,45 @@
-# Hướng Dẫn Deploy Lên Production
+# Hướng Dẫn Deploy Lên Production (v1.0.0)
 
 ## 1. Quy trình chuẩn bị (Pre-Deployment)
 
-1. Đảm bảo toàn bộ mã nguồn trên nhánh `main` đã qua môi trường Staging và UAT.
-2. Kiểm tra CI/CD pipelines (Build, Test, Security Scan) báo PASS.
-3. Backup Database trên Production trước khi deploy.
-   - Lệnh: `pg_dump -U user -h db-host educonnect_prod > backup_YYYYMMDD.sql`
-4. Gửi thông báo Downtime cho người dùng (nếu cần).
+1. Đảm bảo toàn bộ mã nguồn trên nhánh `feature/phase-11-production-launch` đã vượt qua 13 Quality Gates.
+2. Cấu hình file `.env.production` bằng các secret sản xuất độc lập.
+3. Chạy script backup & kiểm tra tiền triển khai:
+   ```powershell
+   pwsh ./scripts/pre-deploy-check.ps1
+   ```
 
-## 2. Các bước Deployment
+## 2. Quy trình Triển khai (Production Deployment)
 
-Quy trình sử dụng CI/CD (GitHub Actions / GitLab CI):
+### 2.1 Qua GitHub Actions (Automated CI/CD)
 
-1. Tạo Release Tag trên Git: `git tag v1.0.0 && git push origin v1.0.0`
-2. CI/CD sẽ tự động:
-   - Build Docker Image với tag `v1.0.0`.
-   - Push lên Container Registry.
-   - Deploy lên Kubernetes / Docker Swarm (Cập nhật image).
-   - Chạy Database Migrations tự động.
+1. Truy cập GitHub Actions workflow `.github/workflows/deploy-production.yml`.
+2. Chọn `Run workflow` qua trigger `workflow_dispatch` (yêu cầu phê duyệt môi trường `production`).
+3. Workflow tự động chạy Lint, Typecheck, Unit/Integration tests, Build Docker images, Backup DB, Migrate deploy và Smoke Test.
 
-## 3. Kiểm tra sau khi Deploy (Post-Deployment)
+### 2.2 Qua Docker Compose Production (Manual / Local Production-Like)
 
-1. Gọi API Health check: `/health`.
-2. Kiểm tra log lỗi: Elastic/Kibana, Datadog hoặc công cụ log đang dùng.
-3. Đăng nhập thử với các tài khoản Test Role.
+```bash
+docker compose -f docker-compose.production.yml config --quiet
+docker compose -f docker-compose.production.yml up -d --build
+```
 
-## 4. Kịch bản Rollback
+## 3. Kiểm tra sau khi Deploy (Post-Deployment Verification)
 
-Nếu có lỗi nghiêm trọng trên Production:
+1. Thực thi script kiểm thử khói sản xuất:
+   ```bash
+   node scripts/smoke-test-production.js
+   ```
+2. Kiểm tra Health Endpoints:
+   - Live: `GET http://localhost:4000/api/health/live`
+   - Ready: `GET http://localhost:4000/api/health/ready`
 
-1. Revert image version về tag trước đó trên k8s/docker.
-2. Nếu có lỗi cấu trúc DB, sử dụng bản backup hoặc lệnh migrate rollback.
-3. Cập nhật lại trạng thái hệ thống.
+## 4. Quy trình Rollback Khẩn cấp
+
+Nếu có sự cố không mong muốn:
+
+1. Thực thi script phục hồi Database khẩn cấp:
+   ```powershell
+   pwsh ./scripts/rollback-db.ps1
+   ```
+2. Khôi phục container về phiên bản ổn định trước đó.

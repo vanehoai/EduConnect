@@ -9,7 +9,7 @@ import { Permissions } from '../../auth/decorators/permissions.decorator';
 import { AnnouncementStatus, Prisma } from '@prisma/client';
 import type { Request } from 'express';
 
-@Controller('api/announcements')
+@Controller('announcements')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class AnnouncementsController {
   constructor(private readonly announcementsService: AnnouncementsService) {}
