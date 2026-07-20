@@ -13,15 +13,34 @@ import {
   RotateCcw,
   Search,
   Trash2,
-  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { PageHeader } from '@/components/ui/page-header';
+
 import { ApiClientError, apiRequest, apiRequestEnvelope } from '@/lib/api-client';
 import { useCurrentUser } from '@/lib/auth';
 
@@ -137,6 +156,7 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
   Object.entries(filters).forEach(([key, value]) => {
     if (value) params.set(key, value);
   });
+
   const listQuery = useQuery({
     queryKey: ['resource', config.endpoint, page, search, sortBy, sortOrder, filters],
     queryFn: () => apiRequestEnvelope<Row[]>(`${config.endpoint}?${params}`),
@@ -151,6 +171,7 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
       staleTime: 60_000,
     })),
   });
+
   const lookupOptions = useMemo(() => {
     const result = new Map<string, ResourceOption[]>();
     lookupFields.forEach((field, index) => {
@@ -168,8 +189,10 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
 
   const can = (permission?: PermissionCode) =>
     Boolean(permission && userQuery.data?.permissions.includes(permission));
+
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ['resource', config.endpoint] });
+
   const removeMutation = useMutation({
     mutationFn: (id: string) => apiRequest<null>(`${config.endpoint}/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
@@ -178,6 +201,7 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+
   const restoreMutation = useMutation({
     mutationFn: (id: string) =>
       apiRequest<Row>(`${config.endpoint}/${id}/restore`, { method: 'POST' }),
@@ -190,10 +214,10 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
 
   if (!userQuery.data?.permissions.includes(config.readPermission)) {
     return (
-      <Card>
-        <CardContent>
-          <h1 className="text-xl font-semibold">Không có quyền truy cập</h1>
-          <p className="mt-2 text-slate-600">
+      <Card className="border-destructive/50 bg-destructive/10">
+        <CardContent className="p-6">
+          <h1 className="text-xl font-semibold text-destructive">Không có quyền truy cập</h1>
+          <p className="mt-2 text-destructive/80">
             Tài khoản hiện tại không có quyền {config.readPermission}.
           </p>
         </CardContent>
@@ -203,214 +227,221 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
 
   const rows = listQuery.data?.data ?? [];
   const meta = listQuery.data?.meta;
+
   return (
-    <section className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-950">{config.title}</h1>
-          <p className="mt-1 text-slate-600">{config.description}</p>
-        </div>
-        <div className="flex gap-2">
-          {config.extraActions}
-          {can(config.createPermission) ? (
-            <Button onClick={() => setEditing(null)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Thêm mới
-            </Button>
-          ) : null}
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title={config.title} description={config.description}>
+        {config.extraActions}
+        {can(config.createPermission) && (
+          <Button onClick={() => setEditing(null)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Thêm mới
+          </Button>
+        )}
+      </PageHeader>
 
       <Card>
-        <CardContent className="space-y-4">
-          <form
-            className="flex flex-wrap gap-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setPage(1);
-              setSearch(searchInput.trim());
-            }}
-          >
-            <div className="relative min-w-60 flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-              <input
-                aria-label="Tìm kiếm"
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                className="h-10 w-full rounded-md border bg-white pl-9 pr-3 text-sm"
-                placeholder="Tìm theo mã, tên hoặc email..."
-              />
-            </div>
-            {(config.filters ?? []).map((filter) => (
+        <CardContent className="p-0">
+          <div className="flex flex-col gap-4 p-4 border-b md:flex-row md:items-center md:justify-between">
+            <form
+              className="flex w-full flex-col gap-3 sm:flex-row sm:items-center"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setPage(1);
+                setSearch(searchInput.trim());
+              }}
+            >
+              <div className="relative w-full sm:max-w-xs">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  aria-label="Tìm kiếm"
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  className="pl-9 bg-muted/50"
+                  placeholder="Tìm kiếm..."
+                />
+              </div>
+
+              {(config.filters ?? []).map((filter) => (
+                <select
+                  key={filter.name}
+                  aria-label={filter.label}
+                  value={filters[filter.name] ?? ''}
+                  onChange={(event) => {
+                    setPage(1);
+                    setFilters((current) => ({ ...current, [filter.name]: event.target.value }));
+                  }}
+                  className="h-10 w-full sm:w-auto rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  <option value="">{filter.label}: Tất cả</option>
+                  {filter.options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              ))}
+
               <select
-                key={filter.name}
-                aria-label={filter.label}
-                value={filters[filter.name] ?? ''}
+                aria-label="Sắp xếp"
+                value={sortBy}
                 onChange={(event) => {
                   setPage(1);
-                  setFilters((current) => ({ ...current, [filter.name]: event.target.value }));
+                  setSortBy(event.target.value);
                 }}
-                className="h-10 rounded-md border bg-white px-3 text-sm"
+                className="h-10 w-full sm:w-auto rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
-                <option value="">{filter.label}: Tất cả</option>
-                {filter.options.map((option) => (
+                {config.sortOptions.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label}
+                    Sắp xếp: {option.label}
                   </option>
                 ))}
               </select>
-            ))}
-            <select
-              aria-label="Sắp xếp"
-              value={sortBy}
-              onChange={(event) => {
-                setPage(1);
-                setSortBy(event.target.value);
-              }}
-              className="h-10 rounded-md border bg-white px-3 text-sm"
-            >
-              {config.sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  Sắp xếp: {option.label}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Thứ tự"
-              value={sortOrder}
-              onChange={(event) => setSortOrder(event.target.value)}
-              className="h-10 rounded-md border bg-white px-3 text-sm"
-            >
-              <option value="asc">Tăng dần</option>
-              <option value="desc">Giảm dần</option>
-            </select>
-            <Button type="submit" variant="outline">
-              Tìm
-            </Button>
-          </form>
 
-          <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="bg-slate-50 text-slate-600">
-                <tr>
-                  {config.columns.map((column) => (
-                    <th key={column.key} className="px-4 py-3 font-medium">
-                      {column.label}
-                    </th>
-                  ))}
-                  {config.detailPath ||
-                  can(config.updatePermission) ||
-                  can(config.deletePermission) ? (
-                    <th className="px-4 py-3 text-right font-medium">Thao tác</th>
-                  ) : null}
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {listQuery.isLoading ? (
-                  <tr>
-                    <td
-                      colSpan={config.columns.length + 1}
-                      className="px-4 py-10 text-center text-slate-500"
-                    >
-                      <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />
-                      Đang tải dữ liệu...
-                    </td>
-                  </tr>
-                ) : listQuery.isError ? (
-                  <tr>
-                    <td
-                      colSpan={config.columns.length + 1}
-                      className="px-4 py-10 text-center text-red-600"
-                    >
-                      {errorMessage(listQuery.error)}
-                    </td>
-                  </tr>
-                ) : !rows.length ? (
-                  <tr>
-                    <td
-                      colSpan={config.columns.length + 1}
-                      className="px-4 py-10 text-center text-slate-500"
-                    >
-                      Không có dữ liệu phù hợp.
-                    </td>
-                  </tr>
-                ) : (
-                  rows.map((row) => (
-                    <tr key={String(row.id)} className="hover:bg-slate-50/70">
-                      {config.columns.map((column) => {
-                        const value = nestedValue(row, column.key);
-                        return (
-                          <td key={column.key} className="px-4 py-3">
-                            {column.format ? column.format(value, row) : displayValue(value)}
-                          </td>
-                        );
-                      })}
-                      {config.detailPath ||
-                      can(config.updatePermission) ||
-                      can(config.deletePermission) ? (
-                        <td className="px-4 py-3">
-                          <div className="flex justify-end gap-1">
-                            {config.detailPath ? (
-                              <Button asChild size="default" variant="outline" title="Chi tiết">
-                                <Link href={config.detailPath(row)}>
-                                  <BookOpen className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                            ) : null}
-                            {row.deletedAt && can(config.updatePermission) ? (
-                              <Button
-                                size="default"
-                                variant="outline"
-                                title="Khôi phục"
-                                onClick={() => restoreMutation.mutate(String(row.id))}
-                              >
-                                <RotateCcw className="h-4 w-4" />
-                              </Button>
-                            ) : (
-                              <>
-                                {can(config.updatePermission) ? (
-                                  <Button
-                                    size="default"
-                                    variant="outline"
-                                    title="Chỉnh sửa"
-                                    onClick={() => setEditing(row)}
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                ) : null}
-                                {can(config.deletePermission) ? (
-                                  <Button
-                                    size="default"
-                                    variant="outline"
-                                    title="Xóa"
-                                    onClick={() => {
-                                      if (window.confirm(`Xóa ${config.entityLabel} này?`))
-                                        removeMutation.mutate(String(row.id));
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-red-600" />
-                                  </Button>
-                                ) : null}
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      ) : null}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+              <select
+                aria-label="Thứ tự"
+                value={sortOrder}
+                onChange={(event) => setSortOrder(event.target.value)}
+                className="h-10 w-full sm:w-auto rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <option value="asc">Tăng dần</option>
+                <option value="desc">Giảm dần</option>
+              </select>
+
+              <Button type="submit" variant="secondary" className="w-full sm:w-auto">
+                Lọc
+              </Button>
+            </form>
           </div>
-          <div className="flex items-center justify-between text-sm text-slate-600">
-            <span>
-              {meta
-                ? `${meta.total} bản ghi · Trang ${meta.page}/${Math.max(meta.totalPages, 1)}`
-                : ''}
-            </span>
-            <div className="flex gap-2">
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {config.columns.map((column) => (
+                  <TableHead key={column.key}>{column.label}</TableHead>
+                ))}
+                {(config.detailPath ||
+                  can(config.updatePermission) ||
+                  can(config.deletePermission)) && (
+                  <TableHead className="text-right">Thao tác</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {listQuery.isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={config.columns.length + 1} className="h-32 text-center">
+                    <LoaderCircle className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                    <p className="mt-2 text-sm text-muted-foreground">Đang tải dữ liệu...</p>
+                  </TableCell>
+                </TableRow>
+              ) : listQuery.isError ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={config.columns.length + 1}
+                    className="h-32 text-center text-destructive"
+                  >
+                    {errorMessage(listQuery.error)}
+                  </TableCell>
+                </TableRow>
+              ) : !rows.length ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={config.columns.length + 1}
+                    className="h-32 text-center text-muted-foreground"
+                  >
+                    Không tìm thấy dữ liệu phù hợp.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                rows.map((row) => (
+                  <TableRow key={String(row.id)}>
+                    {config.columns.map((column) => {
+                      const value = nestedValue(row, column.key);
+                      return (
+                        <TableCell key={column.key}>
+                          {column.format ? column.format(value, row) : displayValue(value)}
+                        </TableCell>
+                      );
+                    })}
+                    {(config.detailPath ||
+                      can(config.updatePermission) ||
+                      can(config.deletePermission)) && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {config.detailPath && (
+                            <Button asChild size="icon" variant="ghost" title="Chi tiết">
+                              <Link href={config.detailPath(row)}>
+                                <BookOpen className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          )}
+                          {row.deletedAt && can(config.updatePermission) ? (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              title="Khôi phục"
+                              onClick={() => restoreMutation.mutate(String(row.id))}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <>
+                              {can(config.updatePermission) && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  title="Chỉnh sửa"
+                                  onClick={() => setEditing(row)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {can(config.deletePermission) && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  title="Xóa"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => {
+                                    if (
+                                      window.confirm(
+                                        `Bạn có chắc chắn muốn xóa ${config.entityLabel} này?`,
+                                      )
+                                    )
+                                      removeMutation.mutate(String(row.id));
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+
+          <div className="flex items-center justify-between border-t p-4">
+            <div className="text-sm text-muted-foreground">
+              {meta ? (
+                <>
+                  Hiển thị <span className="font-medium">{rows.length}</span> /{' '}
+                  <span className="font-medium">{meta.total}</span> bản ghi
+                </>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground mr-2">
+                Trang {meta?.page ?? 1} / {Math.max(meta?.totalPages ?? 1, 1)}
+              </span>
               <Button
                 variant="outline"
+                size="icon"
                 disabled={page <= 1}
                 onClick={() => setPage((value) => value - 1)}
               >
@@ -418,6 +449,7 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
               </Button>
               <Button
                 variant="outline"
+                size="icon"
                 disabled={!meta || page >= meta.totalPages}
                 onClick={() => setPage((value) => value + 1)}
               >
@@ -427,29 +459,31 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
           </div>
         </CardContent>
       </Card>
-      {editing !== undefined ? (
-        <ResourceDialog
-          config={config}
-          row={editing}
-          lookupOptions={lookupOptions}
-          onClose={() => setEditing(undefined)}
-          onSaved={() => {
-            setEditing(undefined);
-            void invalidate();
-          }}
-        />
-      ) : null}
-    </section>
+
+      <ResourceDialog
+        open={editing !== undefined}
+        config={config}
+        row={editing || null}
+        lookupOptions={lookupOptions}
+        onClose={() => setEditing(undefined)}
+        onSaved={() => {
+          setEditing(undefined);
+          void invalidate();
+        }}
+      />
+    </div>
   );
 }
 
 function ResourceDialog({
+  open,
   config,
   row,
   lookupOptions,
   onClose,
   onSaved,
 }: {
+  open: boolean;
   config: ResourcePageConfig;
   row: Row | null;
   lookupOptions: Map<string, ResourceOption[]>;
@@ -457,27 +491,32 @@ function ResourceDialog({
   onSaved: () => void;
 }) {
   const fields = config.fields.filter((field) => !(row && field.createOnly));
-  const schema = useMemo(() => schemaFor(fields), [fields]);
-  const defaults = Object.fromEntries(
-    fields.map((field) => {
-      const raw = row ? nestedValue(row, field.name) : undefined;
-      const value =
-        field.type === 'checkbox'
-          ? Boolean(raw)
-          : raw == null
-            ? ''
-            : field.type === 'date'
-              ? String(raw).slice(0, 10)
-              : field.type === 'datetime-local'
-                ? String(raw).slice(0, 16)
-                : String(raw);
-      return [field.name, value];
-    }),
-  ) as FormValues;
+  const schema = useMemo(() => schemaFor(fields), [fields, row]);
+
+  const defaults = useMemo(() => {
+    return Object.fromEntries(
+      fields.map((field) => {
+        const raw = row ? nestedValue(row, field.name) : undefined;
+        const value =
+          field.type === 'checkbox'
+            ? Boolean(raw)
+            : raw == null
+              ? ''
+              : field.type === 'date'
+                ? String(raw).slice(0, 10)
+                : field.type === 'datetime-local'
+                  ? String(raw).slice(0, 16)
+                  : String(raw);
+        return [field.name, value];
+      }),
+    ) as FormValues;
+  }, [fields, row]);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
     defaultValues: defaults,
   });
+
   const mutation = useMutation({
     mutationFn: (values: FormValues) => {
       const body: Record<string, unknown> = {};
@@ -497,43 +536,41 @@ function ResourceDialog({
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-lg font-semibold">
-            {row ? `Cập nhật ${config.entityLabel}` : `Thêm ${config.entityLabel}`}
-          </h2>
-          <button onClick={onClose} aria-label="Đóng">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {row ? `Cập nhật ${config.entityLabel}` : `Thêm mới ${config.entityLabel}`}
+          </DialogTitle>
+        </DialogHeader>
+
         <form
-          className="grid gap-4 p-6 md:grid-cols-2"
+          id="resource-form"
+          className="grid gap-6 py-4 md:grid-cols-2"
           onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
         >
           {fields.map((field) => {
             const options = field.options ?? lookupOptions.get(field.name);
             const error = form.formState.errors[field.name]?.message;
             return (
-              <label key={field.name} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
-                <span className="mb-1.5 block text-sm font-medium">
-                  {field.label}
-                  {field.required ? ' *' : ''}
-                </span>
+              <div key={field.name} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
+                <Label htmlFor={field.name} className="mb-2 block">
+                  {field.label} {field.required && <span className="text-destructive">*</span>}
+                </Label>
+
                 {field.type === 'textarea' ? (
                   <textarea
-                    className="min-h-24 w-full rounded-md border p-3 text-sm"
+                    id={field.name}
+                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder={field.placeholder}
                     {...form.register(field.name)}
                   />
                 ) : field.type === 'select' ? (
                   <select
-                    className="h-10 w-full rounded-md border bg-white px-3 text-sm"
+                    id={field.name}
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     {...form.register(field.name)}
                   >
                     <option value="">-- Chọn --</option>
@@ -544,32 +581,42 @@ function ResourceDialog({
                     ))}
                   </select>
                 ) : field.type === 'checkbox' ? (
-                  <input type="checkbox" className="h-5 w-5" {...form.register(field.name)} />
+                  <div className="flex h-10 items-center">
+                    <input
+                      id={field.name}
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+                      {...form.register(field.name)}
+                    />
+                  </div>
                 ) : (
-                  <input
+                  <Input
+                    id={field.name}
                     type={field.type ?? 'text'}
-                    className="h-10 w-full rounded-md border bg-white px-3 text-sm"
                     placeholder={field.placeholder}
                     {...form.register(field.name)}
                   />
                 )}
-                {error ? (
-                  <span className="mt-1 block text-sm text-red-600">{String(error)}</span>
-                ) : null}
-              </label>
+                {error && (
+                  <span className="mt-1.5 block text-xs font-medium text-destructive">
+                    {String(error)}
+                  </span>
+                )}
+              </div>
             );
           })}
-          <div className="flex justify-end gap-2 md:col-span-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Hủy
-            </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Lưu
-            </Button>
-          </div>
         </form>
-      </div>
-    </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Hủy
+          </Button>
+          <Button type="submit" form="resource-form" disabled={mutation.isPending}>
+            {mutation.isPending && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+            Lưu thay đổi
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

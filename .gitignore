@@ -23,3 +23,8 @@ Thumbs.db
 
 apps/api/prisma/dev.db
 apps/api/prisma/dev.db-journal
+
+# Generated test reports
+test-results/
+playwright-report/
+apps/web/playwright-report/
