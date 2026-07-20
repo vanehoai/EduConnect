@@ -24,7 +24,7 @@ process.env.DATABASE_URL = testDbUrl;
 console.log('Running Integration Tests on database:', testDbUrl.split('/').pop().split('?')[0]);
 
 try {
-  execSync('npx jest src/modules/exam-attempts/exam-attempts.integration.spec.ts --runInBand', {
+  execSync('npx jest "**/*.integration.spec.ts" --runInBand', {
     stdio: 'inherit',
     env: process.env,
     cwd: path.join(__dirname, '..'),

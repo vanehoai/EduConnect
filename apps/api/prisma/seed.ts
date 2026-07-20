@@ -119,6 +119,19 @@ const permissions = [
   ['adjustment.read', 'Xem điều chỉnh tài chính', 'finance'],
   ['adjustment.manage', 'Quản lý điều chỉnh tài chính', 'finance'],
   ['finance-report.read', 'Xem báo cáo tài chính', 'finance'],
+  ['dashboard.admin.read', 'Xem dashboard admin', 'dashboard'],
+  ['dashboard.training.read', 'Xem dashboard phòng đào tạo', 'dashboard'],
+  ['dashboard.finance.read', 'Xem dashboard phòng tài chính', 'dashboard'],
+  ['dashboard.lecturer.read', 'Xem dashboard giảng viên', 'dashboard'],
+  ['dashboard.student.read', 'Xem dashboard sinh viên', 'dashboard'],
+  ['analytics.academic.read', 'Xem thống kê học vụ', 'analytics'],
+  ['analytics.attendance.read', 'Xem thống kê điểm danh', 'analytics'],
+  ['analytics.examination.read', 'Xem thống kê thi cử', 'analytics'],
+  ['analytics.finance.read', 'Xem thống kê tài chính', 'analytics'],
+  ['academic-risk.read', 'Xem cảnh báo học vụ', 'academic-risk'],
+  ['academic-risk.manage', 'Quản lý cảnh báo học vụ', 'academic-risk'],
+  ['academic-risk.resolve', 'Giải quyết cảnh báo học vụ', 'academic-risk'],
+  ['report.export', 'Xuất báo cáo', 'report'],
 ] as const;
 
 const permissionMap: Record<string, string[]> = {
@@ -180,8 +193,15 @@ const permissionMap: Record<string, string[]> = {
     'question.import',
     'attempt.read',
     'result.read',
-    'result.manage',
     'result.publish',
+    'dashboard.training.read',
+    'analytics.academic.read',
+    'analytics.attendance.read',
+    'analytics.examination.read',
+    'academic-risk.read',
+    'academic-risk.manage',
+    'academic-risk.resolve',
+    'report.export',
   ],
   FINANCE_STAFF: [
     'student.read',
@@ -207,6 +227,9 @@ const permissionMap: Record<string, string[]> = {
     'adjustment.read',
     'adjustment.manage',
     'finance-report.read',
+    'dashboard.finance.read',
+    'analytics.finance.read',
+    'report.export',
   ],
   LECTURER: [
     'student.read',
@@ -235,6 +258,7 @@ const permissionMap: Record<string, string[]> = {
     'result.read',
     'result.manage',
     'result.publish',
+    'dashboard.lecturer.read',
   ],
   STUDENT: [
     'student.read',
@@ -250,6 +274,7 @@ const permissionMap: Record<string, string[]> = {
     'attempt.submit',
     'attempt.read',
     'result.read',
+    'dashboard.student.read',
   ],
 };
 
@@ -896,6 +921,89 @@ async function main(): Promise<void> {
         title: 'Thanh toán thành công',
         content: 'Nhà trường đã ghi nhận khoản thanh toán 2.000.000 VND.',
       },
+    });
+  }
+
+  // --- Phase 6 Seed Data ---
+  const academicRiskRules = [
+    {
+      code: 'LOW_GPA',
+      name: 'GPA học kỳ thấp',
+      type: 'LOW_GPA',
+      defaultSeverity: 'MEDIUM',
+      evaluationPeriodType: 'semester',
+      thresholdConfig: { minGpa: 2.0 },
+      isActive: true,
+    },
+    {
+      code: 'GPA_DECLINE',
+      name: 'GPA giảm mạnh',
+      type: 'GPA_DECLINE',
+      defaultSeverity: 'MEDIUM',
+      evaluationPeriodType: 'semester',
+      thresholdConfig: { maxDecline: 0.5 },
+      isActive: true,
+    },
+    {
+      code: 'HIGH_ABSENCE',
+      name: 'Tỷ lệ vắng cao',
+      type: 'HIGH_ABSENCE',
+      defaultSeverity: 'HIGH',
+      evaluationPeriodType: 'semester',
+      thresholdConfig: { maxAbsenceRate: 0.2 },
+      isActive: true,
+    },
+    {
+      code: 'CONSECUTIVE_ABSENCE',
+      name: 'Vắng liên tiếp',
+      type: 'CONSECUTIVE_ABSENCE',
+      defaultSeverity: 'HIGH',
+      evaluationPeriodType: 'week',
+      thresholdConfig: { maxConsecutive: 3 },
+      isActive: true,
+    },
+    {
+      code: 'FAILED_COURSES',
+      name: 'Trượt nhiều môn',
+      type: 'FAILED_COURSES',
+      defaultSeverity: 'HIGH',
+      evaluationPeriodType: 'semester',
+      thresholdConfig: { maxFailedCourses: 2 },
+      isActive: true,
+    },
+    {
+      code: 'LOW_CREDIT_COMPLETION',
+      name: 'Hoàn thành ít tín chỉ',
+      type: 'LOW_CREDIT_COMPLETION',
+      defaultSeverity: 'MEDIUM',
+      evaluationPeriodType: 'semester',
+      thresholdConfig: { minCompletionRate: 0.5 },
+      isActive: true,
+    },
+    {
+      code: 'EXAM_INCOMPLETE',
+      name: 'Bỏ lỡ kỳ thi',
+      type: 'EXAM_INCOMPLETE',
+      defaultSeverity: 'MEDIUM',
+      evaluationPeriodType: 'semester',
+      thresholdConfig: { maxMissedExams: 1 },
+      isActive: true,
+    },
+    {
+      code: 'FINANCIAL_HOLD',
+      name: 'Công nợ quá hạn',
+      type: 'FINANCIAL_HOLD',
+      defaultSeverity: 'MEDIUM',
+      evaluationPeriodType: 'month',
+      thresholdConfig: { overdueThresholdDays: 30 },
+      isActive: true,
+    },
+  ] as const;
+  for (const rule of academicRiskRules) {
+    await prisma.academicRiskRule.upsert({
+      where: { code: rule.code },
+      update: rule,
+      create: rule,
     });
   }
 
