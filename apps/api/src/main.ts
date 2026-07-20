@@ -14,9 +14,28 @@ async function bootstrap(): Promise<void> {
 
   app.setGlobalPrefix('api');
   app.use(cookieParser());
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'validator.swagger.io'],
+          scriptSrcAttr: ["'none'"],
+        },
+      },
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+    }),
+  );
+
+  const corsOrigins = configService.get<string>('CORS_ORIGIN', 'http://localhost:3000').split(',');
   app.enableCors({
-    origin: configService.get<string>('CORS_ORIGIN', 'http://localhost:3000'),
+    origin: corsOrigins,
     credentials: true,
   });
   app.useGlobalPipes(
@@ -30,17 +49,19 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableShutdownHooks();
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('EduConnect API')
-    .setDescription('REST API cho hệ thống quản lý trường học tích hợp')
-    .setVersion('0.1.0')
-    .addBearerAuth()
-    .addCookieAuth('educonnect_access')
-    .build();
-  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, swaggerDocument, {
-    swaggerOptions: { persistAuthorization: true },
-  });
+  if (configService.get('NODE_ENV') !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('EduConnect API')
+      .setDescription('REST API cho hệ thống quản lý trường học tích hợp')
+      .setVersion('0.1.0')
+      .addBearerAuth()
+      .addCookieAuth('educonnect_access')
+      .build();
+    const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, swaggerDocument, {
+      swaggerOptions: { persistAuthorization: true },
+    });
+  }
 
   await app.listen(port, '0.0.0.0');
 }

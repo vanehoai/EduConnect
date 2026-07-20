@@ -37,7 +37,12 @@ describe('Academic Risks (Integration)', () => {
     await prisma.academicRiskRule.deleteMany();
     const academicYear = await prisma.academicYear.upsert({
       where: { id: 'ay-test' },
-      update: { code: '2026-2027', name: '2026-2027', startDate: new Date('2026-01-01'), endDate: new Date('2026-12-31') },
+      update: {
+        code: '2026-2027',
+        name: '2026-2027',
+        startDate: new Date('2026-01-01'),
+        endDate: new Date('2026-12-31'),
+      },
       create: {
         id: 'ay-test',
         code: '2026-2027',

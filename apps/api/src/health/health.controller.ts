@@ -15,4 +15,16 @@ export class HealthController {
   check(): Promise<HealthStatus> {
     return this.healthService.check();
   }
+
+  @Get('live')
+  @ApiOperation({ summary: 'Liveness check' })
+  live(): { status: string } {
+    return { status: 'ok' };
+  }
+
+  @Get('ready')
+  @ApiOperation({ summary: 'Readiness check' })
+  ready(): Promise<HealthStatus> {
+    return this.healthService.check();
+  }
 }

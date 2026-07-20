@@ -9,6 +9,8 @@ import {
   UseInterceptors,
   UploadedFile,
   Res,
+  ParseFilePipeBuilder,
+  HttpStatus,
 } from '@nestjs/common';
 import { QuestionsService } from './questions.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
@@ -57,7 +59,13 @@ export class QuestionsController {
   @Permissions('question.import', 'question.create')
   @UseInterceptors(FileInterceptor('file'))
   importCsv(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: 'text/csv|csv' })
+        .addMaxSizeValidator({ maxSize: 2 * 1024 * 1024 })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY, fileIsRequired: true }),
+    )
+    file: Express.Multer.File,
     @Body('courseCode') courseCode: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {

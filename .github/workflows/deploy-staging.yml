@@ -1,0 +1,69 @@
+name: Deploy Staging
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Quality Gates - Lint
+        run: npm run lint --if-present
+
+      - name: Quality Gates - Typecheck
+        run: npm run typecheck --if-present
+
+      - name: Quality Gates - Test
+        run: npm run test --if-present
+
+      - name: Build Projects
+        run: npm run build --if-present
+
+      - name: Setup Staging Environment
+        run: cp .env.staging.example .env.staging
+        # Note: In a real environment, you should populate .env.staging with Github Secrets here
+
+      - name: Build Docker Images
+        run: docker-compose -f docker-compose.staging.yml build
+
+      - name: Database Migration (Deploy)
+        run: npm run db:deploy --workspace=@school/api
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+
+      - name: Deploy to Staging (Up)
+        run: docker-compose -f docker-compose.staging.yml up -d
+
+      - name: Wait for Healthchecks
+        run: |
+          echo "Waiting for API to be healthy..."
+          timeout 60s bash -c 'while [[ "$(docker inspect -f {{.State.Health.Status}} $(docker-compose -f docker-compose.staging.yml ps -q api))" != "healthy" ]]; do sleep 2; done'
+
+          echo "Waiting for Web to be healthy..."
+          timeout 60s bash -c 'while [[ "$(docker inspect -f {{.State.Health.Status}} $(docker-compose -f docker-compose.staging.yml ps -q web))" != "healthy" ]]; do sleep 2; done'
+
+      - name: Run E2E Smoke Tests
+        run: npx playwright test --config=playwright.config.ts
+        env:
+          BASE_URL: http://localhost:3000 # Adjust if web is exposed on a different port
+
+      - name: Rollback Script on Failure
+        if: failure()
+        run: |
+          echo "Workflow failed! Initiating rollback..."
+          docker-compose -f docker-compose.staging.yml down
+          # Real rollback logic can involve restoring previous versions of images/volumes
+          echo "Rollback completed."

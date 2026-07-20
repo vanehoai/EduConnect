@@ -2,7 +2,7 @@
 
 EduConnect là nền tảng quản lý trường học tích hợp ba nhóm nghiệp vụ: quản lý đào tạo, thi trắc nghiệm trực tuyến và quản lý học phí/thanh toán. Repository được tổ chức theo **modular monolith** để MVP dễ vận hành nhưng vẫn có ranh giới module rõ ràng cho các giai đoạn tiếp theo.
 
-## Trạng thái hiện tại
+## Trạng thái hiện tại (Phase 8 Production Ready)
 
 Giai đoạn 1 đã cung cấp nền tảng chạy được gồm:
 

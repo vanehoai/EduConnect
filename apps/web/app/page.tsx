@@ -36,7 +36,7 @@ export default function HomePage() {
           </div>
           <div>
             <p className="text-lg font-bold tracking-tight">EduConnect</p>
-            <p className="text-xs text-muted-foreground">School Management System</p>
+            <p className="text-xs text-slate-600">School Management System</p>
           </div>
         </div>
         <SystemStatus />

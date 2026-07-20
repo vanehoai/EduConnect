@@ -11,6 +11,8 @@ import {
   Res,
   UploadedFile,
   UseInterceptors,
+  ParseFilePipeBuilder,
+  HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -113,7 +115,13 @@ export class StudentsController {
   @ApiOperation({ summary: 'Import CSV sinh viên theo chế độ atomic hoặc bỏ qua dòng lỗi' })
   async import(
     @CurrentUser() actor: AuthenticatedUser,
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: 'text/csv|csv' })
+        .addMaxSizeValidator({ maxSize: 2 * 1024 * 1024 })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY, fileIsRequired: false }),
+    )
+    file: Express.Multer.File | undefined,
     @Query() query: ImportStudentsQueryDto,
     @Req() request: Request,
   ) {

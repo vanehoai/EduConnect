@@ -30,10 +30,14 @@ export function validateEnvironment(config: Record<string, unknown>): Record<str
   }
 
   const minimumSecretLength = 32;
+  const isProduction = config.NODE_ENV === 'production';
   for (const key of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'] as const) {
     const value = String(config[key]);
     if (value.length < minimumSecretLength) {
       throw new Error(`${key} phải có ít nhất ${minimumSecretLength} ký tự`);
+    }
+    if (isProduction && value.includes('development')) {
+      throw new Error(`${key} không được chứa từ khóa development trong môi trường production`);
     }
   }
 
