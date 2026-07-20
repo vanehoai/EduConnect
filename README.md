@@ -138,67 +138,72 @@ Backend sẽ phát triển theo các module nghiệp vụ trong cùng một ứn
 - npm 10 trở lên.
 - PostgreSQL 17 và Redis 7, hoặc chỉ chạy hai dịch vụ này bằng Docker.
 
-## Khởi động toàn bộ hệ thống
+## Quick Start (Hướng dẫn cài đặt nhanh)
 
-Từ thư mục gốc repository:
+### 1. Yêu cầu phần mềm
 
-```bash
-docker compose up --build
-```
+- Node.js >= 22.0.0
+- npm >= 10.0.0
+- Docker Desktop (chứa Docker Compose v2)
 
-Lần chạy đầu, API tự động áp dụng migration và seed dữ liệu phát triển trước khi khởi động. Khi các health check hoàn tất, truy cập:
-
-- Web: http://localhost:3000
-- API health: http://localhost:4000/api/health
-- Swagger: http://localhost:4000/api/docs
-- PostgreSQL: `localhost:5432`
-- Redis: `localhost:6379`
-
-Dừng hệ thống nhưng giữ dữ liệu:
+### 2. Clone repository & Cài đặt
 
 ```bash
-docker compose down
-```
-
-Muốn xóa cả dữ liệu PostgreSQL/Redis của môi trường development:
-
-```bash
-docker compose down --volumes
-```
-
-Lệnh cuối sẽ xóa volume dữ liệu cục bộ và không thể hoàn tác.
-
-Nếu port 5432 đã được PostgreSQL cục bộ sử dụng, đặt POSTGRES_PORT=55432 trước khi chạy Compose. Kết nối nội bộ của API vẫn dùng postgres:5432; khi chạy Prisma trực tiếp từ host, cập nhật DATABASE_URL sang port host tương ứng.
-
-## Chạy môi trường development
-
-1. Sao chép `.env.example` thành `.env`.
-2. Cài dependencies và sinh Prisma Client:
-
-```bash
+git clone https://github.com/example/educonnect.git
+cd educonnect
 npm install
-npm run db:generate
 ```
 
-3. Khởi động PostgreSQL và Redis:
+### 3. Cấu hình biến môi trường
+
+Tạo file `.env` từ file mẫu:
+
+```bash
+cp .env.example .env
+```
+
+### 4. Khởi động PostgreSQL & Redis (bằng Docker)
 
 ```bash
 docker compose up postgres redis -d
 ```
 
-4. Áp dụng migration và seed:
+### 5. Khởi tạo Database (Prisma)
 
 ```bash
+npm run db:generate
 npm run db:migrate
 npm run db:seed
 ```
 
-5. Mở hai terminal riêng:
+### 6. Khởi chạy hệ thống (Development)
+
+Mở 2 terminal riêng biệt:
 
 ```bash
+# Terminal 1: Chạy Backend API
 npm run dev:api
+
+# Terminal 2: Chạy Frontend Web
 npm run dev:web
 ```
+
+### 7. Truy cập hệ thống (URL mặc định)
+
+- **Web App (Frontend)**: http://localhost:3000
+- **API Healthcheck**: http://localhost:4000/api/health
+- **Swagger Docs**: http://localhost:4000/api/docs
+
+### 8. Các lệnh tiện ích khác (Tests & Build)
+
+- Chạy toàn bộ Unit Tests: `npm run test`
+- Chạy Build Production: `npm run build`
+- Kiểm tra Linter: `npm run lint`
+
+### 9. Xử lý lỗi thường gặp
+
+- **Lỗi cổng 5432 bị chiếm**: Sửa POSTGRES_PORT trong `.env` thành 55432 và khởi động lại docker.
+- **Lỗi Prisma không nhận schema**: Chạy lại `npm run db:generate` sau mỗi lần checkout branch mới.
 
 ## Tài khoản seed
 
