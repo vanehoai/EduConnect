@@ -30,6 +30,10 @@ import { FinanceModule } from './modules/finance/finance.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AcademicRisksModule } from './modules/academic-risks/academic-risks.module';
+import { ServiceRequestsModule } from './modules/service-requests/service-requests.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
+import { NotificationPreferencesModule } from './modules/notification-preferences/notification-preferences.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -61,6 +65,10 @@ import { AcademicRisksModule } from './modules/academic-risks/academic-risks.mod
     DashboardModule,
     AnalyticsModule,
     AcademicRisksModule,
+    ServiceRequestsModule,
+    AnnouncementsModule,
+    NotificationPreferencesModule,
+    NotificationsModule,
   ],
 
   providers: [
