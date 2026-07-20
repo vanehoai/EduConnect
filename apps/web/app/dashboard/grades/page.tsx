@@ -29,7 +29,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Edit2 } from 'lucide-react';
+import { Edit2, LoaderCircle } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { Label } from '@/components/ui/label';
 
 interface ClassSection {
   id: string;
@@ -146,17 +148,20 @@ export default function TrainingGradesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Quản lý điểm (Đào tạo)</h1>
+      <PageHeader
+        title="Quản lý điểm số"
+        description="Theo dõi và điều chỉnh điểm số của sinh viên trong các lớp học phần."
+      />
 
       <Card>
-        <CardHeader>
-          <CardTitle>Bộ lọc</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="w-[300px]">
+        <CardContent className="p-4">
+          <div className="w-full sm:w-[350px]">
+            <Label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Chọn lớp học phần
+            </Label>
             <Select value={selectedClassId} onValueChange={setSelectedClassId}>
               <SelectTrigger>
-                <SelectValue placeholder="Chọn lớp học phần" />
+                <SelectValue placeholder="-- Chọn lớp học phần --" />
               </SelectTrigger>
               <SelectContent>
                 {classes.map((cls) => (
@@ -172,92 +177,119 @@ export default function TrainingGradesPage() {
 
       {selectedClassId && (
         <Card>
-          <CardHeader>
-            <CardTitle>Bảng điểm</CardTitle>
+          <CardHeader className="border-b bg-muted/20 pb-4">
+            <CardTitle className="text-lg">Bảng điểm</CardTitle>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
-            {loadingStudents ? (
-              <div className="text-center p-4">Đang tải dữ liệu...</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">MSSV</TableHead>
-                    <TableHead className="w-[200px]">Họ tên</TableHead>
-                    {components.map((comp) => (
-                      <TableHead key={comp.id}>
-                        {comp.name} ({comp.weight}%)
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {students.length === 0 ? (
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              {loadingStudents ? (
+                <div className="flex min-h-[200px] flex-col items-center justify-center text-slate-500">
+                  <LoaderCircle className="mb-2 h-6 w-6 animate-spin" />
+                  Đang tải dữ liệu...
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={components.length + 2} className="text-center">
-                        Không có sinh viên
-                      </TableCell>
+                      <TableHead className="w-[120px] font-semibold">MSSV</TableHead>
+                      <TableHead className="min-w-[200px] font-semibold">Họ tên</TableHead>
+                      {components.map((comp) => (
+                        <TableHead key={comp.id} className="font-semibold text-right">
+                          <div className="flex flex-col items-end">
+                            <span>{comp.name}</span>
+                            <span className="text-xs text-muted-foreground font-normal">
+                              Trọng số: {comp.weight}%
+                            </span>
+                          </div>
+                        </TableHead>
+                      ))}
                     </TableRow>
-                  ) : (
-                    students.map((student) => (
-                      <TableRow key={student.id}>
-                        <TableCell>{student.studentCode}</TableCell>
-                        <TableCell>{student.fullName}</TableCell>
-                        {components.map((comp) => {
-                          const grade = grades.find(
-                            (g) => g.studentId === student.id && g.gradeComponentId === comp.id,
-                          );
-                          const score = grade?.score ?? 0;
-                          return (
-                            <TableCell key={comp.id}>
-                              <div className="flex items-center gap-2">
-                                <span>{score}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => handleEditClick(student.id, comp.id, score)}
-                                >
-                                  <Edit2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          );
-                        })}
+                  </TableHeader>
+                  <TableBody>
+                    {students.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={components.length + 2}
+                          className="h-32 text-center text-slate-500"
+                        >
+                          Lớp học phần này chưa có sinh viên.
+                        </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            )}
+                    ) : (
+                      students.map((student) => (
+                        <TableRow key={student.id}>
+                          <TableCell className="font-medium text-slate-700 dark:text-slate-300">
+                            {student.studentCode}
+                          </TableCell>
+                          <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                            {student.fullName}
+                          </TableCell>
+                          {components.map((comp) => {
+                            const grade = grades.find(
+                              (g) => g.studentId === student.id && g.gradeComponentId === comp.id,
+                            );
+                            const score = grade?.score ?? 0;
+                            return (
+                              <TableCell key={comp.id} className="text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <span className="font-semibold text-primary">
+                                    {score.toFixed(1)}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-slate-400 hover:text-primary"
+                                    onClick={() => handleEditClick(student.id, comp.id, score)}
+                                    title="Điều chỉnh điểm"
+                                  >
+                                    <Edit2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
 
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Sửa điểm sinh viên</DialogTitle>
+            <DialogTitle>Điều chỉnh điểm</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Điểm mới</label>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>
+                Điểm mới <span className="text-destructive">*</span>
+              </Label>
               <Input
                 type="number"
+                step="0.1"
+                min="0"
+                max="10"
                 value={editingGrade?.newScore || ''}
                 onChange={(e) =>
                   setEditingGrade((prev) => (prev ? { ...prev, newScore: e.target.value } : null))
                 }
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Lý do thay đổi (Bắt buộc)</label>
+            <div className="grid gap-2">
+              <Label>
+                Lý do thay đổi <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={editingGrade?.reason || ''}
                 onChange={(e) =>
                   setEditingGrade((prev) => (prev ? { ...prev, reason: e.target.value } : null))
                 }
-                placeholder="Ví dụ: Phúc khảo"
+                placeholder="Ví dụ: Phúc khảo thành công..."
               />
             </div>
           </div>
@@ -267,8 +299,13 @@ export default function TrainingGradesPage() {
             </Button>
             <Button
               onClick={handleSaveGrade}
-              disabled={updateGradeMutation.isPending || !editingGrade?.reason}
+              disabled={
+                updateGradeMutation.isPending || !editingGrade?.reason || !editingGrade?.newScore
+              }
             >
+              {updateGradeMutation.isPending && (
+                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Lưu thay đổi
             </Button>
           </DialogFooter>

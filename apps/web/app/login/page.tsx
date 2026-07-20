@@ -1,13 +1,14 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, LoaderCircle } from 'lucide-react';
+import { Eye, EyeOff, LoaderCircle, GraduationCap, Quote } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ApiClientError } from '@/lib/api-client';
 import { useCurrentUser, useLogin } from '@/lib/auth';
 
@@ -49,70 +50,113 @@ export default function LoginPage() {
         : null;
 
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-50 px-4 py-12">
-      <Card className="w-full max-w-md bg-white">
-        <CardContent className="p-8">
-          <div className="mb-7 text-center">
-            <p className="text-xl font-bold text-primary">EduConnect</p>
-            <h1 className="mt-4 text-2xl font-bold text-slate-950">Đăng nhập hệ thống</h1>
-            <p className="mt-2 text-sm text-slate-600">Sử dụng tài khoản do nhà trường cấp.</p>
-          </div>
-          <form className="space-y-5" onSubmit={onSubmit} noValidate>
-            <div>
-              <label htmlFor="email" className="mb-2 block text-sm font-medium">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                aria-invalid={Boolean(errors.email)}
-                className="h-11 w-full rounded-md border bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                placeholder="admin@school.local"
-                {...register('email')}
-              />
-              {errors.email ? (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-              ) : null}
-            </div>
-            <div>
-              <label htmlFor="password" className="mb-2 block text-sm font-medium">
-                Mật khẩu
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  aria-invalid={Boolean(errors.password)}
-                  className="h-11 w-full rounded-md border bg-white px-3 pr-11 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  {...register('password')}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 grid w-11 place-items-center text-slate-500"
-                  onClick={() => setShowPassword((value) => !value)}
-                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+    <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
+      <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
+        <div className="absolute inset-0 bg-primary" />
+        <div className="relative z-20 flex items-center gap-2 text-lg font-medium">
+          <GraduationCap className="h-8 w-8" />
+          EduConnect
+        </div>
+        <div className="relative z-20 mt-auto">
+          <blockquote className="space-y-2">
+            <Quote className="h-10 w-10 text-primary-foreground/40 mb-4" />
+            <p className="text-xl font-medium leading-relaxed">
+              &ldquo;Nền tảng quản lý trường học toàn diện giúp kết nối nhà trường, giảng viên và
+              sinh viên một cách hiệu quả, minh bạch và chuyên nghiệp.&rdquo;
+            </p>
+            <footer className="text-sm text-primary-foreground/80 mt-4">
+              Hệ thống quản lý giáo dục 4.0
+            </footer>
+          </blockquote>
+        </div>
+      </div>
+      <div className="lg:p-8">
+        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+          <div className="flex flex-col space-y-2 text-center lg:text-left">
+            <div className="flex justify-center lg:justify-start items-center gap-2 mb-2 lg:hidden">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <GraduationCap className="h-6 w-6" />
               </div>
-              {errors.password ? (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-              ) : null}
+              <span className="text-2xl font-bold tracking-tight">EduConnect</span>
             </div>
-            {errorMessage ? (
-              <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-                {errorMessage}
-              </p>
-            ) : null}
-            <Button className="w-full" size="lg" type="submit" disabled={login.isPending}>
-              {login.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {login.isPending ? 'Đang đăng nhập...' : 'Đăng nhập'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </main>
+            <h1 className="text-2xl font-semibold tracking-tight">Đăng nhập hệ thống</h1>
+            <p className="text-sm text-muted-foreground">
+              Nhập email và mật khẩu của bạn để truy cập
+            </p>
+          </div>
+          <div className="grid gap-6">
+            <form onSubmit={onSubmit} noValidate>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    placeholder="admin@school.local"
+                    type="email"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    autoCorrect="off"
+                    aria-invalid={Boolean(errors.email)}
+                    {...register('email')}
+                  />
+                  {errors.email && (
+                    <p className="text-sm text-destructive">{errors.email.message}</p>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Mật khẩu</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      aria-invalid={Boolean(errors.password)}
+                      {...register('password')}
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-0 top-0 grid h-full w-10 place-items-center text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-sm text-destructive">{errors.password.message}</p>
+                  )}
+                </div>
+
+                {errorMessage && (
+                  <div
+                    className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
+                    role="alert"
+                    aria-live="assertive"
+                  >
+                    {errorMessage}
+                  </div>
+                )}
+
+                <Button disabled={login.isPending} className="mt-2 w-full">
+                  {login.isPending && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                  {login.isPending ? 'Đang xác thực...' : 'Đăng nhập'}
+                </Button>
+              </div>
+            </form>
+          </div>
+          <p className="px-8 text-center text-sm text-muted-foreground">
+            Bằng việc đăng nhập, bạn đồng ý với{' '}
+            <a href="#" className="underline underline-offset-4 hover:text-primary">
+              Điều khoản dịch vụ
+            </a>{' '}
+            và{' '}
+            <a href="#" className="underline underline-offset-4 hover:text-primary">
+              Chính sách bảo mật
+            </a>{' '}
+            của chúng tôi.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

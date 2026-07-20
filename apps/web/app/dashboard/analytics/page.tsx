@@ -2,13 +2,19 @@
 
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, BookOpen, GraduationCap, Building } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, Building, LoaderCircle } from 'lucide-react';
 import { analyticsService } from '@/lib/services/analytics.service';
+import { PageHeader } from '@/components/ui/page-header';
+import { StatCard } from '@/components/ui/stat-card';
 
 const AnalyticsCharts = dynamic(() => import('./charts'), {
   ssr: false,
-  loading: () => <div className="p-8 text-center text-slate-500">Đang tải biểu đồ...</div>,
+  loading: () => (
+    <div className="flex h-[400px] flex-col items-center justify-center rounded-xl border border-dashed text-slate-500">
+      <LoaderCircle className="mb-4 h-8 w-8 animate-spin" />
+      Đang tải biểu đồ thống kê...
+    </div>
+  ),
 });
 
 export default function AnalyticsPage() {
@@ -18,54 +24,59 @@ export default function AnalyticsPage() {
   });
 
   if (isLoading) {
-    return <div className="p-8 text-center text-slate-500">Đang tải dữ liệu thống kê...</div>;
+    return (
+      <div className="flex min-h-[500px] flex-col items-center justify-center text-slate-500">
+        <LoaderCircle className="mb-4 h-8 w-8 animate-spin" />
+        Đang tải dữ liệu tổng quan...
+      </div>
+    );
   }
 
   if (error || !data) {
-    return <div className="p-8 text-center text-red-500">Có lỗi xảy ra khi tải dữ liệu.</div>;
+    return (
+      <div className="flex min-h-[400px] flex-col items-center justify-center text-destructive">
+        <div className="text-lg font-medium mb-2">Đã xảy ra lỗi</div>
+        <div className="text-sm opacity-80">Không thể tải dữ liệu thống kê lúc này.</div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Thống kê & Báo cáo</h1>
+      <PageHeader
+        title="Thống kê & Báo cáo"
+        description="Tổng quan về số liệu hoạt động và các chỉ số quan trọng của hệ thống."
+      />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Tổng Sinh Viên</CardTitle>
-            <Users className="w-4 h-4 text-slate-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.totalStudents.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Tổng Giảng Viên</CardTitle>
-            <GraduationCap className="w-4 h-4 text-slate-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.totalLecturers.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Môn Học</CardTitle>
-            <BookOpen className="w-4 h-4 text-slate-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.totalCourses.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Lớp Học Đang Mở</CardTitle>
-            <Building className="w-4 h-4 text-slate-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.activeClasses.toLocaleString()}</div>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Tổng Sinh Viên"
+          value={data.totalStudents.toLocaleString()}
+          icon={Users}
+          trend="up"
+          trendValue="Đang theo học"
+        />
+        <StatCard
+          title="Tổng Giảng Viên"
+          value={data.totalLecturers.toLocaleString()}
+          icon={GraduationCap}
+          trend="neutral"
+          trendValue="Đang giảng dạy"
+        />
+        <StatCard
+          title="Môn Học"
+          value={data.totalCourses.toLocaleString()}
+          icon={BookOpen}
+          trend="neutral"
+          trendValue="Đã được duyệt"
+        />
+        <StatCard
+          title="Lớp Học Đang Mở"
+          value={data.activeClasses.toLocaleString()}
+          icon={Building}
+          trend="up"
+          trendValue="Học kỳ hiện tại"
+        />
       </div>
 
       <AnalyticsCharts data={data} />

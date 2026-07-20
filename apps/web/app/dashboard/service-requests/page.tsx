@@ -42,29 +42,89 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
+import { StatCard } from '@/components/ui/stat-card';
 import { toast } from 'sonner';
-import { Download, Eye, Loader2, CheckCircle, XCircle, Lock } from 'lucide-react';
+import {
+  Download,
+  Eye,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Lock,
+  Search,
+  FileText,
+  AlertCircle,
+  Clock,
+  Inbox,
+  ShieldCheck,
+  HelpCircle,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
-const STATUS_LABELS: Record<ServiceRequestStatus, string> = {
-  OPEN: 'Mở',
-  ASSIGNED: 'Đã phân công',
-  IN_PROGRESS: 'Đang xử lý',
-  WAITING_FOR_STUDENT: 'Chờ sinh viên',
-  RESOLVED: 'Đã giải quyết',
-  CLOSED: 'Đã đóng',
-  CANCELLED: 'Đã hủy',
-  REOPENED: 'Đã mở lại',
+const STATUS_CONFIG: Record<
+  ServiceRequestStatus,
+  { label: string; className: string; icon: React.ElementType }
+> = {
+  OPEN: {
+    label: 'Mở',
+    className:
+      'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+    icon: Inbox,
+  },
+  ASSIGNED: {
+    label: 'Đã phân công',
+    className:
+      'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+    icon: ShieldCheck,
+  },
+  IN_PROGRESS: {
+    label: 'Đang xử lý',
+    className:
+      'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+    icon: Clock,
+  },
+  WAITING_FOR_STUDENT: {
+    label: 'Chờ sinh viên',
+    className:
+      'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800',
+    icon: HelpCircle,
+  },
+  RESOLVED: {
+    label: 'Đã giải quyết',
+    className:
+      'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+    icon: CheckCircle,
+  },
+  CLOSED: {
+    label: 'Đã đóng',
+    className:
+      'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+    icon: Lock,
+  },
+  CANCELLED: {
+    label: 'Đã hủy',
+    className:
+      'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
+    icon: XCircle,
+  },
+  REOPENED: {
+    label: 'Đã mở lại',
+    className:
+      'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+    icon: AlertCircle,
+  },
 };
 
-const PRIORITY_COLORS: Record<ServiceRequestPriority, string> = {
-  LOW: 'text-slate-500',
-  NORMAL: 'text-blue-600',
-  HIGH: 'text-orange-600',
-  URGENT: 'text-red-600 font-bold',
+const PRIORITY_CONFIG: Record<ServiceRequestPriority, { label: string; className: string }> = {
+  LOW: { label: 'Thấp', className: 'text-slate-500' },
+  NORMAL: { label: 'Bình thường', className: 'text-blue-600' },
+  HIGH: { label: 'Cao', className: 'text-orange-600' },
+  URGENT: { label: 'Khẩn cấp', className: 'text-red-600 font-bold' },
 };
 
 export default function ServiceRequestsPage() {
@@ -126,178 +186,235 @@ export default function ServiceRequestsPage() {
   });
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Yêu cầu dịch vụ</h1>
-          <p className="text-muted-foreground">Quản lý và xử lý yêu cầu từ sinh viên</p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Yêu cầu dịch vụ"
+        description="Tiếp nhận, quản lý và xử lý các yêu cầu hỗ trợ từ sinh viên."
+      >
         <Button
           variant="outline"
           onClick={() => exportServiceRequests().catch((e: Error) => toast.error(e.message))}
         >
-          <Download className="mr-2 h-4 w-4" /> Xuất CSV
+          <Download className="mr-2 h-4 w-4" /> Xuất báo cáo CSV
         </Button>
-      </div>
+      </PageHeader>
 
-      {/* Summary Cards */}
       {report && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {[
-            { label: 'Tổng', value: report.total },
-            { label: 'Mở', value: report.open },
-            { label: 'Đang xử lý', value: report.inProgress },
-            { label: 'Đã giải quyết', value: report.resolved },
-            { label: 'Đã hủy', value: report.cancelled },
-          ].map(({ label, value }) => (
-            <Card key={label}>
-              <CardHeader className="pb-1 pt-4">
-                <CardTitle className="text-xs text-muted-foreground font-normal">{label}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{value}</p>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+          <StatCard title="Tổng yêu cầu" value={report.total} icon={FileText} />
+          <StatCard
+            title="Mới mở"
+            value={report.open}
+            icon={Inbox}
+            trend="neutral"
+            className="border-emerald-200 dark:border-emerald-900"
+          />
+          <StatCard
+            title="Đang xử lý"
+            value={report.inProgress}
+            icon={Clock}
+            trend="neutral"
+            className="border-amber-200 dark:border-amber-900"
+          />
+          <StatCard title="Đã giải quyết" value={report.resolved} icon={CheckCircle} trend="up" />
+          <StatCard
+            title="Đã hủy"
+            value={report.cancelled}
+            icon={XCircle}
+            trend="down"
+            className="hidden xl:block"
+          />
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap items-center">
-        <Input
-          placeholder="Tìm kiếm mã, tiêu đề..."
-          className="max-w-xs"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <Select
-          value={filterStatus}
-          onValueChange={(v) => setFilterStatus(v as ServiceRequestStatus | 'ALL')}
-        >
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Trạng thái" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
-            {(Object.keys(STATUS_LABELS) as ServiceRequestStatus[]).map((s) => (
-              <SelectItem key={s} value={s}>
-                {STATUS_LABELS[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex flex-col gap-4 p-4 border-b md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <div className="relative w-full sm:w-[300px]">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Tìm kiếm mã, tiêu đề..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 bg-muted/50"
+                />
+              </div>
+              <Select
+                value={filterStatus}
+                onValueChange={(v) => setFilterStatus(v as ServiceRequestStatus | 'ALL')}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
+                  {(Object.keys(STATUS_CONFIG) as ServiceRequestStatus[]).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {STATUS_CONFIG[s].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-      {/* Table */}
-      <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Mã yêu cầu</TableHead>
-              <TableHead>Chủ đề</TableHead>
-              <TableHead>Danh mục</TableHead>
-              <TableHead>Ưu tiên</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead>Ngày tạo</TableHead>
-              <TableHead className="text-right">Hành động</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                  <Loader2 className="inline mr-2 h-4 w-4 animate-spin" />
-                  Đang tải...
-                </TableCell>
-              </TableRow>
-            ) : requests.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                  Không có yêu cầu nào
-                </TableCell>
-              </TableRow>
-            ) : (
-              requests.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-mono text-sm">{r.requestNumber}</TableCell>
-                  <TableCell className="max-w-xs truncate">{r.subject}</TableCell>
-                  <TableCell className="text-sm">{r.category?.name ?? '—'}</TableCell>
-                  <TableCell className={`text-sm ${PRIORITY_COLORS[r.priority]}`}>
-                    {r.priority}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{STATUS_LABELS[r.status]}</Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(r.createdAt), 'dd/MM/yyyy', { locale: vi })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" asChild title="Xem chi tiết">
-                        <Link href={`/dashboard/service-requests/${r.id}`}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      {(r.status === 'ASSIGNED' ||
-                        r.status === 'IN_PROGRESS' ||
-                        r.status === 'WAITING_FOR_STUDENT') && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Giải quyết"
-                          className="text-green-600 hover:text-green-700"
-                          onClick={() => setResolveDialog(r)}
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {r.status === 'RESOLVED' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Đóng yêu cầu"
-                          onClick={() => closeMutation.mutate(r.id)}
-                          disabled={closeMutation.isPending}
-                        >
-                          <Lock className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {(r.status === 'OPEN' ||
-                        r.status === 'ASSIGNED' ||
-                        r.status === 'IN_PROGRESS') && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Hủy"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setCancelDialog(r)}
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[120px]">Mã YC</TableHead>
+                  <TableHead className="min-w-[250px]">Chủ đề</TableHead>
+                  <TableHead>Mức độ</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead>Ngày tạo</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-32 text-center text-slate-500">
+                      <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />
+                      Đang tải danh sách yêu cầu...
+                    </TableCell>
+                  </TableRow>
+                ) : requests.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                      <FileText className="mx-auto mb-2 h-8 w-8 opacity-20" />
+                      Không tìm thấy yêu cầu nào phù hợp.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  requests.map((r) => {
+                    const statusConfig = STATUS_CONFIG[r.status];
+                    const priorityConfig = PRIORITY_CONFIG[r.priority];
+                    const StatusIcon = statusConfig.icon;
 
-      {/* Resolve Dialog */}
+                    return (
+                      <TableRow
+                        key={r.id}
+                        className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50"
+                      >
+                        <TableCell>
+                          <span className="font-mono text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                            {r.requestNumber}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div
+                            className="font-medium text-slate-900 dark:text-slate-100 line-clamp-1"
+                            title={r.subject}
+                          >
+                            {r.subject}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {r.category?.name ?? '—'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn('text-sm', priorityConfig.className)}>
+                            {priorityConfig.label}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              'font-normal flex w-fit items-center gap-1.5',
+                              statusConfig.className,
+                            )}
+                          >
+                            <StatusIcon className="h-3.5 w-3.5" />
+                            {statusConfig.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-600 dark:text-slate-400">
+                          {format(new Date(r.createdAt), 'dd/MM/yyyy HH:mm', { locale: vi })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              asChild
+                              title="Xem chi tiết"
+                              className="text-slate-500 hover:text-primary"
+                            >
+                              <Link href={`/dashboard/service-requests/${r.id}`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            {(r.status === 'ASSIGNED' ||
+                              r.status === 'IN_PROGRESS' ||
+                              r.status === 'WAITING_FOR_STUDENT') && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Giải quyết yêu cầu"
+                                className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                                onClick={() => setResolveDialog(r)}
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {r.status === 'RESOLVED' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Đóng yêu cầu vĩnh viễn"
+                                className="text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                onClick={() => closeMutation.mutate(r.id)}
+                                disabled={closeMutation.isPending}
+                              >
+                                <Lock className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {(r.status === 'OPEN' ||
+                              r.status === 'ASSIGNED' ||
+                              r.status === 'IN_PROGRESS') && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Hủy yêu cầu"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => setCancelDialog(r)}
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
       <Dialog open={!!resolveDialog} onOpenChange={(o) => !o && setResolveDialog(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Giải quyết yêu cầu #{resolveDialog?.requestNumber}</DialogTitle>
+            <DialogTitle>
+              Giải quyết yêu cầu{' '}
+              <span className="text-primary">#{resolveDialog?.requestNumber}</span>
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="py-4 space-y-4">
             <div className="space-y-2">
-              <Label>Tóm tắt giải quyết *</Label>
+              <Label>
+                Nội dung giải quyết <span className="text-destructive">*</span>
+              </Label>
               <Textarea
-                placeholder="Mô tả cách đã giải quyết..."
-                rows={4}
+                placeholder="Mô tả chi tiết phương án và kết quả đã xử lý cho sinh viên..."
+                rows={5}
                 value={resolutionText}
                 onChange={(e) => setResolutionText(e.target.value)}
+                className="resize-y"
               />
             </div>
           </div>
@@ -306,6 +423,7 @@ export default function ServiceRequestsPage() {
               Hủy
             </Button>
             <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() =>
                 resolveDialog &&
                 resolveMutation.mutate({ id: resolveDialog.id, summary: resolutionText })
@@ -319,20 +437,24 @@ export default function ServiceRequestsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Cancel Dialog */}
       <Dialog open={!!cancelDialog} onOpenChange={(o) => !o && setCancelDialog(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Hủy yêu cầu #{cancelDialog?.requestNumber}</DialogTitle>
+            <DialogTitle>
+              Hủy yêu cầu <span className="text-primary">#{cancelDialog?.requestNumber}</span>
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="py-4 space-y-4">
             <div className="space-y-2">
-              <Label>Lý do hủy *</Label>
+              <Label>
+                Lý do hủy <span className="text-destructive">*</span>
+              </Label>
               <Textarea
-                placeholder="Nhập lý do hủy..."
-                rows={3}
+                placeholder="Vui lòng cho biết lý do từ chối/hủy yêu cầu này..."
+                rows={4}
                 value={cancelReasonText}
                 onChange={(e) => setCancelReasonText(e.target.value)}
+                className="resize-y"
               />
             </div>
           </div>
